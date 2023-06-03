@@ -6,33 +6,107 @@ import os
 import re
 import shutil
 import subprocess
+import promptlib
+import requests
+from colorama import Back, Fore, Style
+from configparser import ConfigParser
+
 
 ## Variables ##
+projectPath                 = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                 = (os.environ['HOME'])
-movieSource                 = userProfile + "/Movies/PlexMedia/MKV/Movies/"
-tvSource                    = userProfile + "/Movies/PlexMedia/MKV/TV/"
-otherSource                 = userProfile + "/Movies/PlexMedia/MKV/Other/"
-moviesDestination           = userProfile + "/Movies/PlexMedia/Encoded/Movies/"
-tvDestination               = userProfile + "/Movies/PlexMedia/Encoded/TV/"
-otherDestination            = userProfile + "/Movies/PlexMedia/Encoded/Other/"
+localMedia                  = {
+    "movieSource":          "",
+    "tvSource":             "",
+    "otherSource":          "",
+    "moviesDestination":    "",
+    "tvDestination":        "",
+    "otherDestination":     ""
+}
+plexMedia                   = {
+    "plexMount"             : "",
+    "plexMovies"            : "",
+    "plexTV"                : ""
+}
 movies                      = []
 shows                       = []
 others                      = []
 encodingExt                 = ('.mkv', '.mp4', '.m4v')
 encodingRString             = ".mp4.mkv.m4v"
 encodedExt                  = ".mp4"
-handBrakeCLI                = "/Users/tylerwasick/Projects/plex-automation/Mac/HandBrakeCLI"
-handBrakeProfile            = " --preset-import-gui Plex-HD.json --crop-mode none"
-plexMount                   = "/Volumes/plex/"
-plexMovies                  = plexMount + "Movies/"
-plexTV                      = plexMount + "TV/"
+handBrakeCLI                = projectPath + "/Downloads"
+handBrakeURL                = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1.dmg"
+handbrakeSHA256             = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
+handBrakeProfile            = None
 regularExpPattern           = r"^([\w\s]+)\s-\sS(\d+)E"
+configFile                  = projectPath + "/config.ini"
+config                      = ConfigParser()
 
 ## TODO:Guard if already running, exit
-
+## TODO: Extract subtitles
+## TODO: Place Movies in folders
 
 ## Functions ##
-def encodeMovie():
+##TODO: Read a config file for locations
+def loadSettings():
+    # Check for config file
+    print(Fore.GREEN + "Loading settings")
+    # If present load, 
+    if os.path.exists(configFile):
+        print("Settings loaded successfully")
+        print(config.read('config.ini'))
+        localMedia.update({"movieSource": config.get('local-media', 'movieSource')})
+        #print(movieSource)
+        
+    else:
+        # If not prompt questions to create
+        print(Fore.WHITE + "Settings not found, promptings will follow to create the settings file.")
+        print("Select the base path for MKV files:")
+        #mkvFiles = promptlib.filedialog.askdirectory(title="Select MKV Folder")
+        print("Select the base path for Encoded files:")
+        
+    # Reset style
+    print(Style.RESET_ALL)
+
+
+## Download HandBrakeCLI is not already downloaded
+def downloadHandbrake() -> bool:
+
+    ## TODO Verify hash of the download
+    # Check if "HandBrakeCLI" is downloaded already, if so return true
+    if os.path.isfile(handBrakeCLI):
+        return True         # Exit successfully
+
+    # Verify the "Download" path exists, if so proceed to download handbrake
+    elif os.path.exists(downloadsPath):
+        # Download HandBrakeCLI
+        download = requests.get(handBrakeURL)
+        open(handBrakeCLI, "wb").write(download.content)
+        # Verify the download exists
+        if os.path.exists(handBrakeCLI):
+            return True     # Exit successfully
+        else:
+            return False    # Exit with errors
+    
+    # If the path does not exist, create it and verify it does exist.
+    else:
+        os.makedirs(downloadsPath)
+        # Verify the folder was created, else exit with error
+        if os.path.exists(downloadsPath):
+            return False    # Exit with errors
+        
+        # Download HandBrakeCLI
+        else:
+            download = requests.get(handBrakeURL)
+            open(handBrakeCLI, "wb").write(download.content)
+            # Verify the download exists
+            if os.path.exists(handBrakeCLI):
+                return True     # Exit successfully
+            else:
+                return False    # Exit with errors
+
+## Encode media
+def encodeMedia():
     # Loop through all media types (3 folders)
     for counter in range(3): 
 
@@ -161,7 +235,14 @@ def encodeMovie():
                 print("File was not encoded")
                 continue    # Continue to the next
 
-
 if __name__ == '__main__':
-    encodeMovie()
+    
+    print(localMedia.get("movieSource"))
+    loadSettings()
+    print(localMedia.get("movieSource"))
+    # download = downloadHandbrake()
+    # if download:
+    #     encodeMedia()
+    # else:
+    #     print("Failed to download Handbrake. Aborting!")
     
