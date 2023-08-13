@@ -15,18 +15,17 @@ from configparser import ConfigParser
 ## Variables ##
 projectPath                 = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                 = (os.environ['HOME'])
-localMedia                  = {
-    "movieSource":          "",
-    "tvSource":             "",
-    "otherSource":          "",
-    "moviesDestination":    "",
-    "tvDestination":        "",
-    "otherDestination":     ""
-}
 plexMedia                   = {
-    "plexMount"             : "",
-    "plexMovies"            : "",
-    "plexTV"                : ""
+    "plexMount"             : "/Volumes/plex"
+}
+baseMediaPath               = userProfile + "/Movies/PlexMedia/MKV/"
+localMedia                  = {
+    "movieSource"           : baseMediaPath + "Movies",
+    "tvSource"              : "TV",
+    "otherSource"           : "Other",
+    "moviesDestination"     : plexMedia["plexMount"] + "/Movies",
+    "tvDestination"         : plexMedia["plexMount"] + "/TV",
+    "otherDestination"      : ""
 }
 movies                      = []
 shows                       = []
@@ -34,13 +33,14 @@ others                      = []
 encodingExt                 = ('.mkv', '.mp4', '.m4v')
 encodingRString             = ".mp4.mkv.m4v"
 encodedExt                  = ".mp4"
-handBrakeCLI                = projectPath + "/Downloads"
-handBrakeURL                = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1.dmg"
+handBrakeCLIPath            = projectPath + "/Downloads"
+handBrakeURL                = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLIPath-1.6.1.dmg"
 handbrakeSHA256             = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
 handBrakeProfile            = None
 regularExpPattern           = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                  = projectPath + "/config.ini"
 config                      = ConfigParser()
+#plexMount                   = "/Volumes/plex"
 
 ## TODO:Guard if already running, exit
 ## TODO: Extract subtitles
@@ -69,38 +69,38 @@ def loadSettings():
     print(Style.RESET_ALL)
 
 
-## Download HandBrakeCLI is not already downloaded
+## Download HandBrakeCLIPath is not already downloaded
 def downloadHandbrake() -> bool:
 
     ## TODO Verify hash of the download
-    # Check if "HandBrakeCLI" is downloaded already, if so return true
-    if os.path.isfile(handBrakeCLI):
+    # Check if "HandBrakeCLIPath" is downloaded already, if so return true
+    if os.path.isfile(handBrakeCLIPath):
         return True         # Exit successfully
 
     # Verify the "Download" path exists, if so proceed to download handbrake
-    elif os.path.exists(downloadsPath):
-        # Download HandBrakeCLI
+    elif os.path.exists(handBrakeCLIPath):
+        # Download HandBrakeCLIPath
         download = requests.get(handBrakeURL)
-        open(handBrakeCLI, "wb").write(download.content)
+        open(handBrakeCLIPath, "wb").write(download.content)
         # Verify the download exists
-        if os.path.exists(handBrakeCLI):
+        if os.path.exists(handBrakeCLIPath):
             return True     # Exit successfully
         else:
             return False    # Exit with errors
     
     # If the path does not exist, create it and verify it does exist.
     else:
-        os.makedirs(downloadsPath)
+        os.makedirs(handBrakeCLIPath)
         # Verify the folder was created, else exit with error
-        if os.path.exists(downloadsPath):
+        if os.path.exists(handBrakeCLIPath):
             return False    # Exit with errors
         
-        # Download HandBrakeCLI
+        # Download HandBrakeCLIPath
         else:
             download = requests.get(handBrakeURL)
-            open(handBrakeCLI, "wb").write(download.content)
+            open(handBrakeCLIPath, "wb").write(download.content)
             # Verify the download exists
-            if os.path.exists(handBrakeCLI):
+            if os.path.exists(handBrakeCLIPath):
                 return True     # Exit successfully
             else:
                 return False    # Exit with errors
@@ -112,21 +112,21 @@ def encodeMedia():
 
         # Set source and destination dir for relevant content
         if counter == 0:    # Movies
-            sourceDirectory         = movieSource
-            destinationDirectory    = moviesDestination
-            plexDestination         = plexMovies
+            sourceDirectory         = localMedia["movieSource"]
+            destinationDirectory    = localMedia["moviesDestination"]
+            plexDestination         = plexMedia["plexMovies"]
             movieList               = movies
 
         elif counter == 1:  # TV Shows
-            sourceDirectory         = tvSource
-            destinationDirectory    = tvDestination
-            plexDestination         = plexTV
+            sourceDirectory         = localMedia["tvSource"]
+            destinationDirectory    = localMedia["tvDestination"]
+            plexDestination         = plexMedia["plexTV"]
             movieList               = shows
 
         else:               # Other Movies
-            sourceDirectory         = otherSource
-            destinationDirectory    = otherDestination
-            plexDestination         = ""
+            sourceDirectory         = localMedia["otherSource"]
+            destinationDirectory    = localMedia["otherDestination"]
+            plexDestination         = plexMedia["other"]
             movieList               = others
 
 
@@ -170,7 +170,7 @@ def encodeMedia():
             sourceFileName = sourceDirectory + movie
 
             # Create the process call
-            handBrakeCall = handBrakeCLI + handBrakeProfile + " -i " + f'"{sourceFileName}"' + " -o " + f'"{destinationFileName}"'
+            handBrakeCall = handBrakeCLIPath + handBrakeProfile + " -i " + f'"{sourceFileName}"' + " -o " + f'"{destinationFileName}"'
 
             # Run the file into HandBrake
             returned_value = subprocess.call(handBrakeCall, shell=True)
@@ -180,13 +180,13 @@ def encodeMedia():
             if (returned_value == 0 and fileExists):
                 
                 # Check is SMB connection to plex exists, if not open one
-                plexShareExists = os.path.exists(plexMount)
+                plexShareExists = os.path.exists(plexMedia["plexMount"])
                 if plexShareExists is False:
                     os.system("osascript -e 'mount volume \"smb://10.0.0.202/plex\"'")
 
                 # Verify the share exists, if not exit the program as there is an issue 
                 # mapping the share 
-                plexShareExists = os.path.exists(plexMount)
+                plexShareExists = os.path.exists(plexMedia["plexMount"])
                 if plexShareExists is False:
                     print("Issue mapping share, aborting!")
                     break
@@ -201,7 +201,7 @@ def encodeMedia():
                     result              = re.match(regularExpPattern, destinationFile)
                     showName            = result.group(1)
                     season              = "Season " + result.group(2)
-                    plexDestination     = plexTV    # Reset plex destination
+                    plexDestination     = plexMedia["plexTV"]    # Reset plex destination
 
                     # Update the path variable with the Show Name
                     plexDestination += showName + "/"
@@ -236,13 +236,10 @@ def encodeMedia():
                 continue    # Continue to the next
 
 if __name__ == '__main__':
-    
-    print(localMedia.get("movieSource"))
-    loadSettings()
-    print(localMedia.get("movieSource"))
-    # download = downloadHandbrake()
-    # if download:
-    #     encodeMedia()
-    # else:
-    #     print("Failed to download Handbrake. Aborting!")
-    
+
+
+    download = downloadHandbrake()
+    if download:
+        encodeMedia()
+else:
+    print("Failed to download Handbrake. Aborting!")
