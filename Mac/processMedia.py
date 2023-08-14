@@ -6,7 +6,6 @@ import os
 import re
 import shutil
 import subprocess
-import promptlib
 import requests
 from colorama import Back, Fore, Style
 from configparser import ConfigParser
@@ -21,11 +20,14 @@ plexMedia                   = {
 baseMediaPath               = userProfile + "/Movies/PlexMedia/MKV/"
 localMedia                  = {
     "movieSource"           : baseMediaPath + "Movies",
-    "tvSource"              : "TV",
-    "otherSource"           : "Other",
-    "moviesDestination"     : plexMedia["plexMount"] + "/Movies",
-    "tvDestination"         : plexMedia["plexMount"] + "/TV",
-    "otherDestination"      : ""
+    "tvSource"              : baseMediaPath + "TV",
+    "otherSource"           : baseMediaPath + "Other",
+    "moviePlexDestination"  : plexMedia["plexMount"] + "/Movies",
+    "tvPlexDestination"     : plexMedia["plexMount"] + "/TV",
+    "otherPlexDestination"  : "",
+    "movieEncodeDestination": "/Users/tylerwasick/Movies/PlexMedia/Encoded/Movies/",
+    "tvEncodeDestination"   : "/Users/tylerwasick/Movies/PlexMedia/Encoded/TV/",
+    "otherEncodeDestination": "/Users/tylerwasick/Movies/PlexMedia/Encoded/Other/"
 }
 movies                      = []
 shows                       = []
@@ -33,10 +35,10 @@ others                      = []
 encodingExt                 = ('.mkv', '.mp4', '.m4v')
 encodingRString             = ".mp4.mkv.m4v"
 encodedExt                  = ".mp4"
-handBrakeCLIPath            = projectPath + "/Downloads"
+handBrakeCLIPath            = projectPath + "/Downloads/HandBrakeCLI.dmg"
 handBrakeURL                = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLIPath-1.6.1.dmg"
 handbrakeSHA256             = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
-handBrakeProfile            = None
+handBrakeProfile            = " --preset-import-gui Plex-HD.json --crop-mode none"
 regularExpPattern           = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                  = projectPath + "/config.ini"
 config                      = ConfigParser()
@@ -113,20 +115,20 @@ def encodeMedia():
         # Set source and destination dir for relevant content
         if counter == 0:    # Movies
             sourceDirectory         = localMedia["movieSource"]
-            destinationDirectory    = localMedia["moviesDestination"]
-            plexDestination         = plexMedia["plexMovies"]
+            destinationDirectory    = localMedia["movieEncodeDestination"]
+            plexDestination         = localMedia["moviePlexDestination"]
             movieList               = movies
 
         elif counter == 1:  # TV Shows
             sourceDirectory         = localMedia["tvSource"]
-            destinationDirectory    = localMedia["tvDestination"]
-            plexDestination         = plexMedia["plexTV"]
+            destinationDirectory    = localMedia["tvEncodeDestination"]
+            plexDestination         = localMedia["tvPlexDestination"]
             movieList               = shows
 
         else:               # Other Movies
             sourceDirectory         = localMedia["otherSource"]
-            destinationDirectory    = localMedia["otherDestination"]
-            plexDestination         = plexMedia["other"]
+            destinationDirectory    = localMedia["otherEncodeDestination"]
+            plexDestination         = localMedia["otherPlexDestination"]
             movieList               = others
 
 
