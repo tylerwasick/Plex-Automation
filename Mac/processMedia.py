@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import requests
 from colorama import Back, Fore, Style
 from configparser import ConfigParser
@@ -51,27 +52,45 @@ config                          = ConfigParser()
 ## Functions ##
 ##TODO: Read a config file for locations
 def loadSettings():
-    # Check for config file
-    print(Fore.GREEN + "Loading settings")
-    # If present load,
-    if os.path.exists(configFile):
-        print("Settings loaded successfully")
-        print(config.read("config.ini"))
-        localMedia.update({"movieSource": config.get("local-media", "movieSource")})
-        # print(movieSource)
+    # Check if 7Zip is installed, if nnot install it
+    def check_7zip_installed():
+        try:
+            subprocess.check_output(['7z'])
+            return True
+        except OSError:
+            return False
 
-    else:
-        # If not prompt questions to create
-        print(
-            Fore.WHITE
-            + "Settings not found, promptings will follow to create the settings file."
-        )
-        print("Select the base path for MKV files:")
-        # mkvFiles = promptlib.filedialog.askdirectory(title="Select MKV Folder")
-        print("Select the base path for Encoded files:")
+    def install_7zip():
+        if sys.platform == 'win32':
+            subprocess.call(['choco', 'install', '7zip'])
+        elif sys.platform == 'darwin':
+            subprocess.call(['brew', 'install', 'sevenzip'])
+        else:
+            subprocess.call(['apt-get', 'install', 'p7zip-full'])
 
-    # Reset style
-    print(Style.RESET_ALL)
+    if not check_7zip_installed():
+        install_7zip()
+#    # Check for config file
+#    print(Fore.GREEN + "Loading settings")
+#    # If present load,
+#    if os.path.exists(configFile):
+#        print("Settings loaded successfully")
+#        print(config.read("config.ini"))
+#        localMedia.update({"movieSource": config.get("local-media", "movieSource")})
+#        # print(movieSource)
+
+#    else:
+#        # If not prompt questions to create
+#        print(
+#            Fore.WHITE
+#            + "Settings not found, promptings will follow to create the settings file."
+#        )
+#        print("Select the base path for MKV files:")
+#        # mkvFiles = promptlib.filedialog.askdirectory(title="Select MKV Folder")
+#        print("Select the base path for Encoded files:")
+
+#    # Reset style
+#    print(Style.RESET_ALL)
 
 
 ## Download HandBrakeCLIDir is n ot already downloaded
@@ -83,6 +102,7 @@ def downloadHandbrake() -> bool:
 
     # Verify the "Download" path exists, if so proceed to download handbrake
     elif os.path.exists(handBrakeCLIDir):
+        ## TODO: Refactor
         # Download HandBrakeCLIDir
         download = requests.get(handBrakeURL)
         open(handBrakeCLIPath, "wb").write(download.content)
@@ -104,14 +124,21 @@ def downloadHandbrake() -> bool:
 
         # Download HandBrakeCLIDir
         else:
+            ## TODO: Refactor
+            # Download HandBrakeCLIDir
             download = requests.get(handBrakeURL)
             open(handBrakeCLIPath, "wb").write(download.content)
 
             # Verify the download exists
             if os.path.exists(handBrakeCLIPath):
+                # Extract download to allow access 
+
+                # Verify the dmg was extracted
+
                 # Update file permissions to allow executibule rights
                 os.chmod(handBrakeCLIPath, 0o755)
                 return True  # Exit successfully
+            
             else:
                 return False  # Exit with errors
 
@@ -250,6 +277,7 @@ def encodeMedia():
 
 
 if __name__ == "__main__":
+    loadSettings()
     download = downloadHandbrake()
     if download:
         encodeMedia()
