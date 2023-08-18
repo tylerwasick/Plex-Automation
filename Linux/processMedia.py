@@ -11,51 +11,95 @@ import requests
 from colorama import Back, Fore, Style
 from configparser import ConfigParser
 
-
 ## Variables ##
 projectPath                     = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                     = os.environ["HOME"]
-## TODO: Update location
-plexMedia                       = {"plexMount": "s3://wasick/Plex/"}
+plexMedia                       = {"plexMount": "/Volumes/plex"}
 baseMediaPath                   = userProfile + "/Movies/PlexMedia/MKV/"
 localMedia                      = {
-    "movieSource"                   : baseMediaPath + "Movies",
-    "tvSource"                      : baseMediaPath + "TV",
-    "otherSource"                   : baseMediaPath + "Other",
-    "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies",
-    "tvPlexDestination"             : plexMedia["plexMount"] + "/TV",
+    "movieSource"                   : baseMediaPath + "Movies/",
+    "tvSource"                      : baseMediaPath + "TV/",
+    "otherSource"                   : baseMediaPath + "Other/",
+    "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies/",
+    "tvPlexDestination"             : plexMedia["plexMount"] + "/TV/",
     "otherPlexDestination"          : "",
-    "movieEncodeDestination"        : "/PlexMedia/Encoded/Movies/",
-    "tvEncodeDestination"           : "/PlexMedia/Encoded/TV/",
-    "otherEncodeDestination"        : "/PlexMedia/Encoded/Other/",
+    "movieEncodeDestination"        : "/Users/tylerwasick/Movies/PlexMedia/Encoded/Movies/",
+    "tvEncodeDestination"           : "/Users/tylerwasick/Movies/PlexMedia/Encoded/TV/",
+    "otherEncodeDestination"        : "/Users/tylerwasick/Movies/PlexMedia/Encoded/Other/",
 }
 movies                          = []
 shows                           = []
 others                          = []
 encodingExt                     = (".mkv", ".mp4", ".m4v")
 encodingRString                 = ".mp4.mkv.m4v"
-encodedExt                      = ".mp4"
+encodedExt                      = ".m4v"
 handBrakeCLIDir                 = projectPath + "/Downloads/"
-#TODO: Update handbrake download for Ubuntu/Debian systems
 handBrakeCLIPath                = handBrakeCLIDir + "HandBrakeCLI-1.6.1.dmg"
+handBrakeCLIExtracted           = handBrakeCLIDir + "HandBrakeCLI-1.6.1" + "/" + "HandBrakeCLI"
 handBrakeURL                    = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1.dmg"
 handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
 handBrakeProfile                = " --preset-import-gui Plex-HD.json --crop-mode none"
 regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = projectPath + "/config.ini"
 config                          = ConfigParser()
+sevenZipParams                  = "7zz x " + handBrakeCLIPath + " -o" + handBrakeCLIDir
+# plexMount                   = "/Volumes/plex"
 
-## TODO: Guard if already running, exit
+## TODO:Guard if already running, exit
 ## TODO: Extract subtitles
 ## TODO: Place Movies in folders
 
 
 ## Functions ##
+##TODO: Read a config file for locations
+def loadSettings():
+    # Check if 7Zip is installed, if nnot install it
+    def check_7zip_installed():
+        try:
+            subprocess.check_output(['7zz'])
+            return True
+        except OSError:
+            return False
+
+    def install_7zip():
+        if sys.platform == 'win32':
+            subprocess.call(['choco', 'install', '7zip'])
+        elif sys.platform == 'darwin':
+            subprocess.call(['brew', 'install', 'sevenzip'])
+        else:
+            subprocess.call(['apt-get', 'install', 'p7zip-full'])
+
+    if not check_7zip_installed():
+        install_7zip()
+
+#    # Check for config file
+#    print(Fore.GREEN + "Loading settings")
+#    # If present load,
+#    if os.path.exists(configFile):
+#        print("Settings loaded successfully")
+#        print(config.read("config.ini"))
+#        localMedia.update({"movieSource": config.get("local-media", "movieSource")})
+#        # print(movieSource)
+
+#    else:
+#        # If not prompt questions to create
+#        print(
+#            Fore.WHITE
+#            + "Settings not found, promptings will follow to create the settings file."
+#        )
+#        print("Select the base path for MKV files:")
+#        # mkvFiles = promptlib.filedialog.askdirectory(title="Select MKV Folder")
+#        print("Select the base path for Encoded files:")
+
+#    # Reset style
+#    print(Style.RESET_ALL)
+
+
 ## Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
     ## TODO Verify hash of the download
     # Check if "HandBrakeCLIDir" is  downloaded already, if so return true
-    if os.path.isfile(handBrakeCLIPath):
+    if os.path.isfile(handBrakeCLIExtracted):
         return True  # Exit successfully
 
     # Verify the "Download" path exists, if so proceed to download handbrake
@@ -67,9 +111,13 @@ def downloadHandbrake() -> bool:
 
         # Verify the download exists
         if os.path.exists(handBrakeCLIPath):
-            # Update file permissions to allow executibule rights
-            os.chmod(handBrakeCLIPath, 0o755)
-            return True  # Exit successfully
+            # Extract download to allow access 
+            subprocess.call(sevenZipParams, shell=True)
+
+            if os.path.isfile(handBrakeCLIExtracted):
+                return True  # Exit successfully
+            else:
+                return False
         else:
             return False  # Exit with errors
 
@@ -90,13 +138,14 @@ def downloadHandbrake() -> bool:
             # Verify the download exists
             if os.path.exists(handBrakeCLIPath):
                 # Extract download to allow access 
+                subprocess.call(sevenZipParams, shell=True)
 
                 # Verify the dmg was extracted
-
-                # Update file permissions to allow executibule rights
-                os.chmod(handBrakeCLIPath, 0o755)
-                return True  # Exit successfully
-            
+                if os.path.isfile(handBrakeCLIExtracted):
+                    return True  # Exit successfully
+                else:
+                    return False
+                
             else:
                 return False  # Exit with errors
 
@@ -163,7 +212,7 @@ def encodeMedia():
 
             # Create the process call
             handBrakeCall = (
-                handBrakeCLIPath
+                handBrakeCLIExtracted
                 + handBrakeProfile
                 + " -i "
                 + f'"{sourceFileName}"'
@@ -201,10 +250,10 @@ def encodeMedia():
                     result = re.match(regularExpPattern, destinationFile)
                     showName = result.group(1)
                     season = "Season " + result.group(2)
-                    plexDestination = plexMedia["plexTV"]  # Reset plex destination
+                    plexDestination = localMedia["tvPlexDestination"]  # Reset plex destination
 
                     # Update the path variable with the Show Name
-                    plexDestination += showName + "/"
+                    plexDestination += showName
 
                     # Check if the show folder exists, if not create one
                     pathExists = os.path.exists(plexDestination)
@@ -213,7 +262,7 @@ def encodeMedia():
                         os.mkdir(plexDestination)
 
                     # Update the path variable with the Show Name
-                    plexDestination += season
+                    plexDestination += "/" + season
 
                     # Checks if the season folder exists, if not creates one
                     pathExists = os.path.exists(plexDestination)
@@ -235,7 +284,7 @@ def encodeMedia():
 
 
 if __name__ == "__main__":
-    
+    loadSettings()
     download = downloadHandbrake()
     if download:
         encodeMedia()
