@@ -34,120 +34,78 @@ encodingExt                     = (".mkv", ".mp4", ".m4v")
 encodingRString                 = ".mp4.mkv.m4v"
 encodedExt                      = ".m4v"
 handBrakeCLIDir                 = projectPath + "/Downloads/"
-handBrakeCLIPath                = handBrakeCLIDir + "HandBrakeCLI-1.6.1.dmg"
-handBrakeCLIExtracted           = handBrakeCLIDir + "HandBrakeCLI-1.6.1" + "/" + "HandBrakeCLI"
-handBrakeURL                    = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1.dmg"
+handBrakeCLIPath                = handBrakeCLIDir + "HandBrakeCLI-1.6.1-x86_64.flatpak"
+handBrakeURL                    = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1-x86_64.flatpak"
 handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
 handBrakeProfile                = " --preset-import-gui Plex-HD.json --crop-mode none"
 regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = projectPath + "/config.ini"
 config                          = ConfigParser()
-sevenZipParams                  = "7zz x " + handBrakeCLIPath + " -o" + handBrakeCLIDir
-# plexMount                   = "/Volumes/plex"
 
 ## TODO:Guard if already running, exit
 ## TODO: Extract subtitles
 ## TODO: Place Movies in folders
 
-
 ## Functions ##
 ##TODO: Read a config file for locations
-def loadSettings():
-    # Check if 7Zip is installed, if nnot install it
-    def check_7zip_installed():
+def appSetup():
+    ## Check if required applications are installed
+    # Flatpak 
+    def flatPakSetup():
+        # Check to see if S3 is installed
         try:
-            subprocess.check_output(['7zz'])
-            return True
+            subprocess.check_output(['flatpak'])
         except OSError:
-            return False
+            # If not, install using apt
+            subprocess.call(['apt-get', 'install', 'flatpak'])
 
-    def install_7zip():
-        if sys.platform == 'win32':
-            subprocess.call(['choco', 'install', '7zip'])
-        elif sys.platform == 'darwin':
-            subprocess.call(['brew', 'install', 'sevenzip'])
-        else:
-            subprocess.call(['apt-get', 'install', 'p7zip-full'])
+    # S3 bucket
+    def s3Setup():
+        # Check to see if S3 is installed
+        try:
+            subprocess.check_output(['s3cmd'])
+        except OSError:
+            # If not, install using apt
+            subprocess.call(['apt-get', 'install', 's3cmd'])
+            
+        ## Connect to S3 bucket
 
-    if not check_7zip_installed():
-        install_7zip()
-
-#    # Check for config file
-#    print(Fore.GREEN + "Loading settings")
-#    # If present load,
-#    if os.path.exists(configFile):
-#        print("Settings loaded successfully")
-#        print(config.read("config.ini"))
-#        localMedia.update({"movieSource": config.get("local-media", "movieSource")})
-#        # print(movieSource)
-
-#    else:
-#        # If not prompt questions to create
-#        print(
-#            Fore.WHITE
-#            + "Settings not found, promptings will follow to create the settings file."
-#        )
-#        print("Select the base path for MKV files:")
-#        # mkvFiles = promptlib.filedialog.askdirectory(title="Select MKV Folder")
-#        print("Select the base path for Encoded files:")
-
-#    # Reset style
-#    print(Style.RESET_ALL)
-
+    print("Placeholder")
 
 ## Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
-    ## TODO Verify hash of the download
-    # Check if "HandBrakeCLIDir" is  downloaded already, if so return true
-    if os.path.isfile(handBrakeCLIExtracted):
+    ## TODO: Verify hash of the download
+    ## TODO: Check the version of Linux running, current support is for Ubuntu only
+
+    # Check if "HandBrakeCLI" is downloaded already, if so return true
+    if os.path.isfile(handBrakeCLIPath):
         return True  # Exit successfully
 
-    # Verify the "Download" path exists, if so proceed to download handbrake
-    elif os.path.exists(handBrakeCLIDir):
-        ## TODO: Refactor
-        # Download HandBrakeCLIDir
-        download = requests.get(handBrakeURL)
-        open(handBrakeCLIPath, "wb").write(download.content)
-
-        # Verify the download exists
-        if os.path.exists(handBrakeCLIPath):
-            # Extract download to allow access 
-            subprocess.call(sevenZipParams, shell=True)
-
-            if os.path.isfile(handBrakeCLIExtracted):
-                return True  # Exit successfully
-            else:
-                return False
-        else:
-            return False  # Exit with errors
-
-    # If the path does not exist, create it and verify it does exist.
-    else:
+    # Verify the "Download" path exists, if not, create the folder before proceeding
+    elif os.path.exists(handBrakeCLIDir) is False:
+        # Check if the download folder is missing, create the downloads folder
         os.makedirs(handBrakeCLIDir)
-        # Verify the folder was created, else exit with error
-        if os.path.exists(handBrakeCLIDir):
+
+        # Verify folder was created 
+        if os.path.exists(handBrakeCLIDir) is False:
+            # Failed to create directory, abort!
             return False  # Exit with errors
+ 
+    # Download HandBrakeCLIDir
+    download = requests.get(handBrakeURL)
+    open(handBrakeCLIPath, "wb").write(download.content)
+    
+    # Install Handbrake using Flatpak
+    subprocess.call("flatpak --user install " + handBrakeCLIPath)
 
-        # Download HandBrakeCLIDir
-        else:
-            ## TODO: Refactor
-            # Download HandBrakeCLIDir
-            download = requests.get(handBrakeURL)
-            open(handBrakeCLIPath, "wb").write(download.content)
+    # Verify the download exists
+    if os.path.exists(handBrakeCLIPath):
+        
+        return True  # Exit successfully
+    else:
+        return False  # Exit with errors
 
-            # Verify the download exists
-            if os.path.exists(handBrakeCLIPath):
-                # Extract download to allow access 
-                subprocess.call(sevenZipParams, shell=True)
-
-                # Verify the dmg was extracted
-                if os.path.isfile(handBrakeCLIExtracted):
-                    return True  # Exit successfully
-                else:
-                    return False
-                
-            else:
-                return False  # Exit with errors
+   
 
 
 ## Encode media
@@ -212,7 +170,7 @@ def encodeMedia():
 
             # Create the process call
             handBrakeCall = (
-                handBrakeCLIExtracted
+                handBrakeCLIPath
                 + handBrakeProfile
                 + " -i "
                 + f'"{sourceFileName}"'
@@ -284,9 +242,12 @@ def encodeMedia():
 
 
 if __name__ == "__main__":
-    loadSettings()
+    appSetup()
     download = downloadHandbrake()
     if download:
-        encodeMedia()
-else:
-    print("Failed to download Handbrake. Aborting!")
+        # Encode media
+        #encodeMedia()
+        print("Encoding media")
+    else:
+        # Unable to install Handbrake
+        print("Failed to download Handbrake. Aborting!")
