@@ -53,22 +53,20 @@ def appSetup():
     # Flatpak 
     def flatPakSetup():
         # Check to see if S3 is installed
-        try:
-            subprocess.check_output(['flatpak'])
-        except OSError:
+        call = subprocess.call(['which', 'flatpak'])
+        if call != 0:
             # If not, install using apt
             print("Flatpak is not installed, installing.")
-            subprocess.call(['apt-get', 'install', 'flatpak'])
+            subprocess.call(['sudo', 'apt-get', 'install', 'flatpak', '-y'])
 
     # S3 bucket
     def s3Setup():
         # Check to see if S3 is installed
-        try:
-            subprocess.check_output(['s3cmd'])
-        except OSError:
+        call = subprocess.call(['which', 's3cmd'])
+        if call != 0:
             # If not, install using apt
             print("S3cmd is not installed, installing.")
-            subprocess.call(['apt-get', 'install', 's3cmd'])
+            subprocess.call(['sudo', 'apt-get', 'install', 's3cmd', '-y'])
             
         ## Connect to S3 bucket
 
@@ -104,8 +102,8 @@ def downloadHandbrake() -> bool:
     open(handBrakeCLIPath, "wb").write(download.content)
     
     # Install Handbrake using Flatpak
-    subprocess.call("flatpak --user install " + handBrakeCLIPath)
-
+    subprocess.call(['flatpak', '--user', 'install', handBrakeCLIPath, '-y'])
+    
     # Verify the download exists
     if os.path.exists(handBrakeCLIPath):
         
