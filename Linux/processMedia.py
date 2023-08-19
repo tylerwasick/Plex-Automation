@@ -57,6 +57,7 @@ def appSetup():
             subprocess.check_output(['flatpak'])
         except OSError:
             # If not, install using apt
+            print("Flatpak is not installed, installing.")
             subprocess.call(['apt-get', 'install', 'flatpak'])
 
     # S3 bucket
@@ -66,11 +67,18 @@ def appSetup():
             subprocess.check_output(['s3cmd'])
         except OSError:
             # If not, install using apt
+            print("S3cmd is not installed, installing.")
             subprocess.call(['apt-get', 'install', 's3cmd'])
             
         ## Connect to S3 bucket
 
-    print("Placeholder")
+    print("Checking for required applications...")
+
+    print("Checking if flatpak is installed")
+    flatPakSetup()
+
+    print("Checking if s3cmd is installed")
+    s3Setup()
 
 ## Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
