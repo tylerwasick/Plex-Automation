@@ -1,5 +1,5 @@
 # /usr/bin/python3
-## Script to automate the process of encoding and coping files
+## Script to automate the process of encoding and coping files to Plex Media Server
 
 ## Imports ##
 import os
@@ -15,8 +15,10 @@ from configparser import ConfigParser
 projectPath                     = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                     = os.environ["HOME"]
 plexMedia                       = {"plexMount": "/Volumes/plex"}
-baseMediaPath                   = userProfile + "/Movies/PlexMedia/MKV/"
-localMedia                      = {
+s3Bucket                        = "s3://wasick"
+s3ConfigFile                    = "~/.s3cfg"
+baseMediaPath                   = s3Bucket + "/PlexMedia/"
+s3Media                         = {
     "movieSource"                   : baseMediaPath + "Movies/",
     "tvSource"                      : baseMediaPath + "TV/",
     "otherSource"                   : baseMediaPath + "Other/",
@@ -48,43 +50,127 @@ config                          = ConfigParser()
 
 ## Functions ##
 ##TODO: Read a config file for locations
-def appSetup():
+def appSetup() -> bool:
     ## Check if required applications are installed
     # Flatpak 
-    def flatPakSetup():
+    def flatPakSetup() -> bool:
         # Check to see if S3 is installed
         call = subprocess.call(['which', 'flatpak'])
         if call != 0:
             # If not, install using apt
             print("Flatpak is not installed, installing.")
-            subprocess.call(['sudo', 'apt-get', 'install', 'flatpak', '-y'])
+            subprocess.call(['sudo', 'apt-get', 'install', 'flatpak', '--assume-yes', '-q', '-y'])
+
+            # Verify the install was successful
+            call = subprocess.call(['which', 'flatpak'])
+            if call == 0:
+                # If so, exit
+                print("Flatpak is now installed")
+                return True
+            else:
+                # Unable to install, exit
+                print("Failed to install Flatpak, Aborting!")
+                return False
+        else:
+            # If so, exit
+            print("Flatpak is already installed")
+            return True
 
     # S3 bucket
-    def s3Setup():
+    def s3Setup() -> bool:
         # Check to see if S3 is installed
-        call = subprocess.call(['which', 's3cmd'])
-        if call != 0:
-            # If not, install using apt
-            print("S3cmd is not installed, installing.")
-            subprocess.call(['sudo', 'apt-get', 'install', 's3cmd', '-y'])
-            
-        ## Connect to S3 bucket
+        def s3Install() -> bool:
+            call = subprocess.call(['which', 's3cmd'])
+            if call != 0:
+                # If not, install using apt
+                print("S3cmd is not installed, installing.")
+                subprocess.call(['sudo', 'apt-get', 'install', 's3cmd', '--assume-yes', '-q', '-y'])
 
+                # Verify the install was successful
+                call = subprocess.call(['which', 's3cmd'])
+                if call == 0:
+                    # If so, exit
+                    print("S3cmd is now installed")
+                    return True
+                else:
+                    # Unable to install, exit
+                    print("Failed to install S3cmd, Aborting!")
+                    return False
+            else:
+                # If so, exit
+                print("S3cmd is already installed")
+                return True
+                
+        ## Connect to S3 bucket
+        def s3Config() -> bool:
+            # See if the S3 configs exist
+            call = subprocess.call(['s3cmd', 'ls', s3Bucket])
+            if call == 0:
+                # If so, exit
+                print("S3cmd is already configured")
+                return True
+            
+            # If not, create the config file
+            else:
+                print("S3cmd is not configured, configuring now.")
+
+                # Expand the s3ConfigFile path
+                s3ConfigFileExp = os.path.expanduser(s3ConfigFile)
+
+                # Connect to the S3 bucket
+                subprocess.call(['s3cmd', 
+                                 '--access_key=DO00F336LZ46BCAXJCLY', 
+                                 '--secret_key=2WEOlemCFhz2QFdfSN27aQJDGpWI9miaipaqsVY6RRM',  
+                                 '--host=nyc3.digitaloceanspaces.com', 
+                                 '--host-bucket="%(bucket)%s.nyc3.digitaloceanspaces.com"',
+                                 '--dump-config',
+                                 '2>&1',
+                                 '|',
+                                 'tee',
+                                 "\"\"" + s3ConfigFileExp + "\"\""])
+
+
+                # Verify the config file was created
+                if os.path.exists(s3ConfigFileExp):
+                    # If so, exit
+                    print("S3cmd is now configured")
+                    return True
+                else:
+                    # Unable to create config file, exit
+                    print("Failed to configure S3cmd, Aborting!")
+                    return False
+                
+        # Run the functions, if they return True, continue, else exit
+        if s3Install() and s3Config():
+            return True     # Exit successfully
+        else:
+            print("Failed to configure s3cmd, Aborting!")
+            return False    # Exit with errors
+            
     print("Checking for required applications...")
 
     print("Checking if flatpak is installed")
-    flatPakSetup()
+    setupFlatPak = flatPakSetup()
 
     print("Checking if s3cmd is installed")
-    s3Setup()
+    setupS3cmd = s3Setup()
+
+    if setupFlatPak and setupS3cmd:
+        return True     # Exit successfully
+    else:
+        # Unable to install, exit
+        print("Failed to install required applications, Aborting!")
+        return False    # Exit with errors
+    
 
 ## Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
     ## TODO: Verify hash of the download
     ## TODO: Check the version of Linux running, current support is for Ubuntu only
 
-    # Check if "HandBrakeCLI" is downloaded already, if so return true
-    if os.path.isfile(handBrakeCLIPath):
+    # Check if "HandBrakeCLI" is already installed, is so exit and return True
+    process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
+    if process == 0:
         return True  # Exit successfully
 
     # Verify the "Download" path exists, if not, create the folder before proceeding
@@ -120,21 +206,21 @@ def encodeMedia():
     for counter in range(3):
         # Set source and destination dir for relevant content
         if counter == 0:  # Movies
-            sourceDirectory = localMedia["movieSource"]
-            destinationDirectory = localMedia["movieEncodeDestination"]
-            plexDestination = localMedia["moviePlexDestination"]
+            sourceDirectory = s3Media["movieSource"]
+            destinationDirectory = s3Media["movieEncodeDestination"]
+            plexDestination = s3Media["moviePlexDestination"]
             movieList = movies
 
         elif counter == 1:  # TV Shows
-            sourceDirectory = localMedia["tvSource"]
-            destinationDirectory = localMedia["tvEncodeDestination"]
-            plexDestination = localMedia["tvPlexDestination"]
+            sourceDirectory = s3Media["tvSource"]
+            destinationDirectory = s3Media["tvEncodeDestination"]
+            plexDestination = s3Media["tvPlexDestination"]
             movieList = shows
 
         else:  # Other Movies
-            sourceDirectory = localMedia["otherSource"]
-            destinationDirectory = localMedia["otherEncodeDestination"]
-            plexDestination = localMedia["otherPlexDestination"]
+            sourceDirectory = s3Media["otherSource"]
+            destinationDirectory = s3Media["otherEncodeDestination"]
+            plexDestination = s3Media["otherPlexDestination"]
             movieList = others
 
         ## Process Shows ##
@@ -214,7 +300,7 @@ def encodeMedia():
                     result = re.match(regularExpPattern, destinationFile)
                     showName = result.group(1)
                     season = "Season " + result.group(2)
-                    plexDestination = localMedia["tvPlexDestination"]  # Reset plex destination
+                    plexDestination = s3Media["tvPlexDestination"]  # Reset plex destination
 
                     # Update the path variable with the Show Name
                     plexDestination += showName
@@ -248,12 +334,22 @@ def encodeMedia():
 
 
 if __name__ == "__main__":
-    appSetup()
-    download = downloadHandbrake()
+
+    # Run the app reqirement setup
+    setup       = appSetup()
+    if setup:
+        print("App requirement setup complete")
+    else:
+        print("App requirement setup failed")
+        sys.exit()
+
+    # Download Handbrake
+    download    = downloadHandbrake()
     if download:
-        # Encode media
+        # If successful, encode media
         #encodeMedia()
         print("Encoding media")
     else:
-        # Unable to install Handbrake
+        # Else exit
         print("Failed to download Handbrake. Aborting!")
+        sys.exit()
