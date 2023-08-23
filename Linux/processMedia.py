@@ -21,12 +21,12 @@ s3Media                         = {
     "movieSource"                   : s3Bucket + "Movies/",
     "tvSource"                      : s3Bucket + "TV/",
     "otherSource"                   : s3Bucket + "Other/",
-    "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies/",
-    "tvPlexDestination"             : plexMedia["plexMount"] + "/TV/",
+    "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies/",  ## TODO: Update to use scp
+    "tvPlexDestination"             : plexMedia["plexMount"] + "/TV/",      ## TODO: Update to use scp
     "otherPlexDestination"          : "",
-    "movieEncodeDestination"        : "/Users/tylerwasick/Movies/PlexMedia/Encoded/Movies/",
-    "tvEncodeDestination"           : "/Users/tylerwasick/Movies/PlexMedia/Encoded/TV/",
-    "otherEncodeDestination"        : "/Users/tylerwasick/Movies/PlexMedia/Encoded/Other/",
+    "movieEncodeDestination"        : "/plextemp/Movies/",
+    "tvEncodeDestination"           : "/plextemp/TV/",
+    "otherEncodeDestination"        : "/plextemp/Other/",
 }
 movies                          = []
 shows                           = []
@@ -241,114 +241,113 @@ def encodeMedia():
             movieList               = others
 
         ## Process Shows ##
-        ## Iterate over the source directory
+        ## Iterate over the source directory using s3cmd
+        results = subprocess.run(['s3cmd', 'ls', sourceDirectory], stdout=subprocess.PIPE)
 
-        for dirContent in os.listdir(sourceDirectory):
-            # Join the contants (files and folders) to the original path
-            path = os.path.join(sourceDirectory, dirContent)
-
-            # If the file ends with an extension that can be encoded,
-            # add to the "movies" list
-            if os.path.isfile(path):
-                if path.endswith(encodingExt):
-                    movieList.append(dirContent)
-                    print(f"File found: {dirContent}, file added")
-
-                # Else the file is not supported
-                else:
-                    print(f"File is not supported {dirContent}")
-
-            # Else the path is a folder, do not proceed with scanning
+        # Loop through the files and folders returned by the s3cmd call
+        for line in results.stdout.decode('utf-8').split('\n'):
+            
+            # Check if the line is empty
+            if not line:
+                # If the line is empty, skip it
+                continue
             else:
-                print(f"Folder found: {dirContent}, will not process")
+                # Else, process the line using regex
+                parsedResult = re.search('s3:\/\/.*', line)
+                
+                # Check if the string ends with an extension from the encodingExt list
+                if parsedResult.group(0).endswith(encodingExt):
 
-        # Sort through the list alphabetically
-        movieList.sort()
+                    # Add the paths to the list
+                    movieList.append(parsedResult.group(0))
 
-        # Loop through the list of movies, encode the movie then copy to the
-        # appropriate destination
-        for movie in movieList:
-            # Remove the file extension before encoding then add the new file
-            # extension for the destination
-            destinationFile = movie.rstrip(encodingRString)
+                    # Print result found
+                    print("Added: " + parsedResult.group(0) + "to the list")
 
-            # Concatinate the destination file name with the destination path
-            destinationFileName = destinationDirectory + destinationFile + encodedExt
+        # # Loop through the list of movies, encode the movie then copy to the
+        # # appropriate destination
+        # for movie in movieList:
+        #     # Remove the file extension before encoding then add the new file
+        #     # extension for the destination
+        #     destinationFile = movie.rstrip(encodingRString)
 
-            # Set the source file destination by concatinating the source path to the file name
-            sourceFileName = sourceDirectory + movie
+        #     # Concatinate the destination file name with the destination path
+        #     destinationFileName = destinationDirectory + destinationFile + encodedExt
 
-            # Create the process call
-            handBrakeCall = (
-                handBrakeCLIPath
-                + handBrakeProfile
-                + " -i "
-                + f'"{sourceFileName}"'
-                + " -o "
-                + f'"{destinationFileName}"'
-            )
+        #     # Set the source file destination by concatinating the source path to the file name
+        #     sourceFileName = sourceDirectory + movie
 
-            # Run the file into HandBrake
-            returned_value = subprocess.call(handBrakeCall, shell=True)
-            fileExists = os.path.isfile(destinationFileName)
+        #     # Create the process call
+        #     handBrakeCall = (
+        #         handBrakeCLIPath
+        #         + handBrakeProfile
+        #         + " -i "
+        #         + f'"{sourceFileName}"'
+        #         + " -o "
+        #         + f'"{destinationFileName}"'
+        #     )
 
-            # Check if the destination file exists, and is not 0k, if so proceed
-            if returned_value == 0 and fileExists:
-                # Check is SMB connection to plex exists, if not open one
-                plexShareExists = os.path.exists(plexMedia["plexMount"])
-                if plexShareExists is False:
-                    os.system("osascript -e 'mount volume \"smb://10.0.0.202/plex\"'")
+        #     # Run the file into HandBrake
+        #     returned_value = subprocess.call(handBrakeCall, shell=True)
+        #     fileExists = os.path.isfile(destinationFileName)
 
-                # Verify the share exists, if not exit the program as there is an issue
-                # mapping the share
-                plexShareExists = os.path.exists(plexMedia["plexMount"])
-                if plexShareExists is False:
-                    print("Issue mapping share, aborting!")
-                    break
+        #     # Check if the destination file exists, and is not 0k, if so proceed
+        #     if returned_value == 0 and fileExists:
+        #         # Check is SMB connection to plex exists, if not open one
+        #         plexShareExists = os.path.exists(plexMedia["plexMount"])
+        #         if plexShareExists is False:
+        #             os.system("osascript -e 'mount volume \"smb://10.0.0.202/plex\"'")
 
-                # Copy the encoded file to the destination (Plex Media Server)
-                if counter == 0:  # If movies, simply copy
-                    copySuccessful = shutil.copy(destinationFileName, plexDestination)
-                    print(copySuccessful)
+        #         # Verify the share exists, if not exit the program as there is an issue
+        #         # mapping the share
+        #         plexShareExists = os.path.exists(plexMedia["plexMount"])
+        #         if plexShareExists is False:
+        #             print("Issue mapping share, aborting!")
+        #             break
 
-                elif (
-                    counter == 1
-                ):  # Elif TV Shows, we need to parse where they will be copies to
-                    # Use regex to parse the string into groups we can use for coping
-                    result          = re.match(regularExpPattern, destinationFile)
-                    showName        = result.group(1)
-                    season          = "Season " + result.group(2)
-                    plexDestination = s3Media["tvPlexDestination"]  # Reset plex destination
+        #         # Copy the encoded file to the destination (Plex Media Server)
+        #         if counter == 0:  # If movies, simply copy
+        #             copySuccessful = shutil.copy(destinationFileName, plexDestination)
+        #             print(copySuccessful)
 
-                    # Update the path variable with the Show Name
-                    plexDestination += showName
+        #         elif (
+        #             counter == 1
+        #         ):  # Elif TV Shows, we need to parse where they will be copies to
+        #             # Use regex to parse the string into groups we can use for coping
+        #             result          = re.match(regularExpPattern, destinationFile)
+        #             showName        = result.group(1)
+        #             season          = "Season " + result.group(2)
+        #             plexDestination = s3Media["tvPlexDestination"]  # Reset plex destination
 
-                    # Check if the show folder exists, if not create one
-                    pathExists = os.path.exists(plexDestination)
-                    if not pathExists:
-                        # If path does not exist, create folder
-                        os.mkdir(plexDestination)
+        #             # Update the path variable with the Show Name
+        #             plexDestination += showName
 
-                    # Update the path variable with the Show Name
-                    plexDestination += "/" + season
+        #             # Check if the show folder exists, if not create one
+        #             pathExists = os.path.exists(plexDestination)
+        #             if not pathExists:
+        #                 # If path does not exist, create folder
+        #                 os.mkdir(plexDestination)
 
-                    # Checks if the season folder exists, if not creates one
-                    pathExists = os.path.exists(plexDestination)
-                    if not pathExists:
-                        # If path does not exist, create folder
-                        os.mkdir(plexDestination)
+        #             # Update the path variable with the Show Name
+        #             plexDestination += "/" + season
 
-                    # Copy the file the encoded directory to the Plex destination
-                    copySuccessful = shutil.copy(destinationFileName, plexDestination)
-                    print(copySuccessful)
+        #             # Checks if the season folder exists, if not creates one
+        #             pathExists = os.path.exists(plexDestination)
+        #             if not pathExists:
+        #                 # If path does not exist, create folder
+        #                 os.mkdir(plexDestination)
 
-                # Remove files from source after copy (if all previous steps were successful)
-                os.remove(sourceFileName)
+        #             # Copy the file the encoded directory to the Plex destination
+        #             copySuccessful = shutil.copy(destinationFileName, plexDestination)
+        #             print(copySuccessful)
 
-            # Else print error and continue to next file
-            else:
-                print("File was not encoded")
-                continue  # Continue to the next
+        #         # Remove files from source after copy (if all previous steps were successful)
+        #         os.remove(sourceFileName)
+
+        #     # Else print error and continue to next file
+        #     else:
+        #         print("File was not encoded")
+        #         continue  # Continue to the next
 
 
 if __name__ == "__main__":
