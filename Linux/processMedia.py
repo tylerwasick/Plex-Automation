@@ -15,13 +15,12 @@ from configparser import ConfigParser
 projectPath                     = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                     = os.environ["HOME"]
 plexMedia                       = {"plexMount": "/Volumes/plex"}
-s3Bucket                        = "s3://wasick"
+s3Bucket                        = "s3://plexutil/"
 s3ConfigFile                    = "~/.s3cfg"
-baseMediaPath                   = s3Bucket + "/PlexMedia/"
 s3Media                         = {
-    "movieSource"                   : baseMediaPath + "Movies/",
-    "tvSource"                      : baseMediaPath + "TV/",
-    "otherSource"                   : baseMediaPath + "Other/",
+    "movieSource"                   : s3Bucket + "Movies/",
+    "tvSource"                      : s3Bucket + "TV/",
+    "otherSource"                   : s3Bucket + "Other/",
     "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies/",
     "tvPlexDestination"             : plexMedia["plexMount"] + "/TV/",
     "otherPlexDestination"          : "",
@@ -47,6 +46,8 @@ config                          = ConfigParser()
 ## TODO:Guard if already running, exit
 ## TODO: Extract subtitles
 ## TODO: Place Movies in folders
+## TODO: Work on logging
+## TODO: Add multi-thread support
 
 ## Functions ##
 ##TODO: Read a config file for locations
@@ -117,18 +118,38 @@ def appSetup() -> bool:
                 # Expand the s3ConfigFile path
                 s3ConfigFileExp = os.path.expanduser(s3ConfigFile)
 
-                # Connect to the S3 bucket
-                subprocess.call(['s3cmd', 
-                                 '--access_key=DO00F336LZ46BCAXJCLY', 
-                                 '--secret_key=2WEOlemCFhz2QFdfSN27aQJDGpWI9miaipaqsVY6RRM',  
-                                 '--host=nyc3.digitaloceanspaces.com', 
-                                 '--host-bucket="%(bucket)%s.nyc3.digitaloceanspaces.com"',
-                                 '--dump-config',
-                                 '2>&1',
-                                 '|',
-                                 'tee',
-                                 "\"\"" + s3ConfigFileExp + "\"\""])
+                # Prompt user for access key and store it to a variable
+                accessKey = input("Enter your S3 access key: ")
 
+                # Prompt user for secret key and store it to a variable
+                secret = input("Enter your S3 secret key: ")
+
+                # Prompt  user for the S3 bucket name and store it to a variable
+                s3BucketBase = input("S3 Endpoint []: ")
+
+                # Prompt user for the URL template to access the bucket and store it to a variable
+                s3BucketURL = input("DNS-style bucket+hostname:port template for accessing a bucket []: ")
+
+                # Define the values to be changed in the config file
+                print("Access key: " + accessKey)
+                print("Secret: " + secret)
+                
+                # Create the S3 config file
+                print("Creating S3 config file")
+                shutil.copyfile(handBrakeCLIDir + "s3cmd.cfg", s3ConfigFileExp)
+
+                # Read the config file
+                config.read(s3ConfigFileExp)
+
+                # Update the config with unique values
+                config['default']['access_key']     = accessKey
+                config['default']['secret_key']     = secret
+                config['default']['host_base']      = s3BucketBase
+                config['default']['host_bucket']    = s3BucketURL
+
+                # Write the config file
+                with open(s3ConfigFileExp, 'w') as configfile:
+                    config.write(configfile)
 
                 # Verify the config file was created
                 if os.path.exists(s3ConfigFileExp):
@@ -162,7 +183,6 @@ def appSetup() -> bool:
         print("Failed to install required applications, Aborting!")
         return False    # Exit with errors
     
-
 ## Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
     ## TODO: Verify hash of the download
@@ -197,34 +217,32 @@ def downloadHandbrake() -> bool:
     else:
         return False  # Exit with errors
 
-   
-
-
 ## Encode media
 def encodeMedia():
     # Loop through all media types (3 folders)
     for counter in range(3):
         # Set source and destination dir for relevant content
         if counter == 0:  # Movies
-            sourceDirectory = s3Media["movieSource"]
-            destinationDirectory = s3Media["movieEncodeDestination"]
-            plexDestination = s3Media["moviePlexDestination"]
-            movieList = movies
+            sourceDirectory         = s3Media["movieSource"]
+            destinationDirectory    = s3Media["movieEncodeDestination"]
+            plexDestination         = s3Media["moviePlexDestination"]
+            movieList               = movies
 
         elif counter == 1:  # TV Shows
-            sourceDirectory = s3Media["tvSource"]
-            destinationDirectory = s3Media["tvEncodeDestination"]
-            plexDestination = s3Media["tvPlexDestination"]
-            movieList = shows
+            sourceDirectory         = s3Media["tvSource"]
+            destinationDirectory    = s3Media["tvEncodeDestination"]
+            plexDestination         = s3Media["tvPlexDestination"]
+            movieList               = shows
 
         else:  # Other Movies
-            sourceDirectory = s3Media["otherSource"]
-            destinationDirectory = s3Media["otherEncodeDestination"]
-            plexDestination = s3Media["otherPlexDestination"]
-            movieList = others
+            sourceDirectory         = s3Media["otherSource"]
+            destinationDirectory    = s3Media["otherEncodeDestination"]
+            plexDestination         = s3Media["otherPlexDestination"]
+            movieList               = others
 
         ## Process Shows ##
         ## Iterate over the source directory
+
         for dirContent in os.listdir(sourceDirectory):
             # Join the contants (files and folders) to the original path
             path = os.path.join(sourceDirectory, dirContent)
@@ -297,9 +315,9 @@ def encodeMedia():
                     counter == 1
                 ):  # Elif TV Shows, we need to parse where they will be copies to
                     # Use regex to parse the string into groups we can use for coping
-                    result = re.match(regularExpPattern, destinationFile)
-                    showName = result.group(1)
-                    season = "Season " + result.group(2)
+                    result          = re.match(regularExpPattern, destinationFile)
+                    showName        = result.group(1)
+                    season          = "Season " + result.group(2)
                     plexDestination = s3Media["tvPlexDestination"]  # Reset plex destination
 
                     # Update the path variable with the Show Name
@@ -347,8 +365,8 @@ if __name__ == "__main__":
     download    = downloadHandbrake()
     if download:
         # If successful, encode media
-        #encodeMedia()
         print("Encoding media")
+        encodeMedia()
     else:
         # Else exit
         print("Failed to download Handbrake. Aborting!")
