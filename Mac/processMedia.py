@@ -232,9 +232,8 @@ def encodeMedia():
                     copySuccessful = shutil.copy(destinationFileName, plexDestination)
                     print(copySuccessful)
 
-                elif (
-                    counter == 1
-                ):  # Elif TV Shows, we need to parse where they will be copies to
+                # Elif TV Shows, we need to parse where they will be copies to
+                elif counter == 1:
                     # Use regex to parse the string into groups we can use for coping
                     result = re.match(regularExpPattern, destinationFile)
                     showName = result.group(1)

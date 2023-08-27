@@ -2,19 +2,23 @@
 ## Script to automate the process of encoding and coping files to Plex Media Server
 
 ## Imports ##
+import hashlib
 import os
 import re
 import shutil
 import subprocess
 import sys
 import requests
-from colorama import Back, Fore, Style
 from configparser import ConfigParser
+from colorama import Back, Fore, Style
+from paramiko import SSHClient
+from scp import SCPClient
 
 ## Variables ##
 projectPath                     = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                     = os.environ["HOME"]
 plexMedia                       = {"plexMount": "/Volumes/plex"}
+plexHost                        = "twasick@vpn.tylerwasick.com"
 s3Bucket                        = "s3://plexutil/"
 s3ConfigFile                    = "~/.s3cfg"
 s3Media                         = {
@@ -24,9 +28,13 @@ s3Media                         = {
     "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies/",  ## TODO: Update to use scp
     "tvPlexDestination"             : plexMedia["plexMount"] + "/TV/",      ## TODO: Update to use scp
     "otherPlexDestination"          : "",
-    "movieEncodeDestination"        : "/plextemp/Movies/",
-    "tvEncodeDestination"           : "/plextemp/TV/",
-    "otherEncodeDestination"        : "/plextemp/Other/",
+    "movieEncodeDestination"        : "/plextemp/Encoded/Movies/",
+    "tvEncodeDestination"           : "/plextemp/Encoded/TV/",
+    "otherEncodeDestination"        : "/plextemp/Encoded/Other/",
+    "archiveDestination"            : s3Bucket + "Archived/",
+    "movieTmpDestination"           : "/plextemp/Temp/Movies/",
+    "tvTmpDestination"              : "/plextemp/Temp/TV/",
+    "otherTmpDestination"           : "/plextemp/Temp/Other/"
 }
 movies                          = []
 shows                           = []
@@ -35,8 +43,7 @@ encodingExt                     = (".mkv", ".mp4", ".m4v")
 encodingRString                 = ".mp4.mkv.m4v"
 encodedExt                      = ".m4v"
 handBrakeCLIDir                 = projectPath + "/Downloads/"
-handBrakeCLIPath                = handBrakeCLIDir + "HandBrakeCLI-1.6.1-x86_64.flatpak"
-handBrakeURL                    = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1-x86_64.flatpak"
+handBrakeFlatPakPath            = handBrakeCLIDir + "HandBrakeCLI-1.6.1-x86_64.flatpak"
 handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
 handBrakeProfile                = " --preset-import-gui Plex-HD.json --crop-mode none"
 regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
@@ -183,7 +190,7 @@ def appSetup() -> bool:
         print("Failed to install required applications, Aborting!")
         return False    # Exit with errors
     
-## Download HandBrakeCLIDir is n ot already downloaded
+# Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
     ## TODO: Verify hash of the download
     ## TODO: Check the version of Linux running, current support is for Ubuntu only
@@ -192,32 +199,35 @@ def downloadHandbrake() -> bool:
     process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
     if process == 0:
         return True  # Exit successfully
-
-    # Verify the "Download" path exists, if not, create the folder before proceeding
-    elif os.path.exists(handBrakeCLIDir) is False:
-        # Check if the download folder is missing, create the downloads folder
-        os.makedirs(handBrakeCLIDir)
-
-        # Verify folder was created 
-        if os.path.exists(handBrakeCLIDir) is False:
-            # Failed to create directory, abort!
-            return False  # Exit with errors
- 
-    # Download HandBrakeCLIDir
-    download = requests.get(handBrakeURL)
-    open(handBrakeCLIPath, "wb").write(download.content)
     
-    # Install Handbrake using Flatpak
-    subprocess.call(['flatpak', '--user', 'install', handBrakeCLIPath, '-y'])
+    # Install Handbrake using Flatpak TODO: Fix this to use the flatpak repo
+    subprocess.call(['flatpak', '--user', 'install', 'fr.handbrake.HandBrakeCLI', '-y'])
     
-    # Verify the download exists
-    if os.path.exists(handBrakeCLIPath):
-        
+    # Verify the install was successful
+    process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
+    if process == 0:
         return True  # Exit successfully
     else:
-        return False  # Exit with errors
+        return False # Exit with errors
+    
+# Compares two files hashes and returns True if they match
+def compareHashes(file1, file2) -> bool:
+    # Open the files and read the contents
+    with open(file1, 'rb') as f1:
+        file1Contents = f1.read()
 
-## Encode media
+    with open(file2, 'rb') as f2:
+        file2Contents = f2.read()
+
+    # Compare the hashes
+    if hashlib.sha256(file1Contents).hexdigest() == hashlib.sha256(file2Contents).hexdigest():
+        # If the hashes match, exit
+        return True
+    else:
+        # If the hashes do not match, exit
+        return False
+
+# Encode media
 def encodeMedia():
     # Loop through all media types (3 folders)
     for counter in range(3):
@@ -226,18 +236,24 @@ def encodeMedia():
             sourceDirectory         = s3Media["movieSource"]
             destinationDirectory    = s3Media["movieEncodeDestination"]
             plexDestination         = s3Media["moviePlexDestination"]
+            tempDirectory           = s3Media["movieTmpDestination"]
+            archiveDestination      = s3Media["archiveDestination"] + "Movies/"
             movieList               = movies
 
         elif counter == 1:  # TV Shows
             sourceDirectory         = s3Media["tvSource"]
             destinationDirectory    = s3Media["tvEncodeDestination"]
             plexDestination         = s3Media["tvPlexDestination"]
+            tempDirectory           = s3Media["tvTmpDestination"]
+            archiveDestination      = s3Media["archiveDestination"] + "TV/"
             movieList               = shows
 
         else:  # Other Movies
             sourceDirectory         = s3Media["otherSource"]
             destinationDirectory    = s3Media["otherEncodeDestination"]
             plexDestination         = s3Media["otherPlexDestination"]
+            tempDirectory           = s3Media["otherTmpDestination"]
+            archiveDestination      = s3Media["archiveDestination"] + "Other/"
             movieList               = others
 
         ## Process Shows ##
@@ -264,90 +280,132 @@ def encodeMedia():
                     # Print result found
                     print("Added: " + parsedResult.group(0) + "to the list")
 
-        # # Loop through the list of movies, encode the movie then copy to the
-        # # appropriate destination
-        # for movie in movieList:
-        #     # Remove the file extension before encoding then add the new file
-        #     # extension for the destination
-        #     destinationFile = movie.rstrip(encodingRString)
+        # Loop through the list of movies, encode the movie then copy to the
+        # appropriate destination
+        for movie in movieList:
+            
+            # Seperate the file name from the path
+            movieFileName = movie.split("/")[-1]
 
-        #     # Concatinate the destination file name with the destination path
-        #     destinationFileName = destinationDirectory + destinationFile + encodedExt
+            # Remove the file extension before encoding then add the new file
+            # extension for the destination
+            destinationFile = movieFileName.rstrip(encodingRString)
 
-        #     # Set the source file destination by concatinating the source path to the file name
-        #     sourceFileName = sourceDirectory + movie
+            # Concatinate the destination file name with the destination path
+            destinationFileName = destinationDirectory + destinationFile + encodedExt
 
-        #     # Create the process call
-        #     handBrakeCall = (
-        #         handBrakeCLIPath
-        #         + handBrakeProfile
-        #         + " -i "
-        #         + f'"{sourceFileName}"'
-        #         + " -o "
-        #         + f'"{destinationFileName}"'
-        #     )
+            # Set the source file destination by concatinating the source path to the file name
+            sourceFileName = sourceDirectory + movieFileName
 
-        #     # Run the file into HandBrake
-        #     returned_value = subprocess.call(handBrakeCall, shell=True)
-        #     fileExists = os.path.isfile(destinationFileName)
+            print("Source file: " + sourceFileName)
+            print("Destination file: " + destinationFileName)
 
-        #     # Check if the destination file exists, and is not 0k, if so proceed
-        #     if returned_value == 0 and fileExists:
-        #         # Check is SMB connection to plex exists, if not open one
-        #         plexShareExists = os.path.exists(plexMedia["plexMount"])
-        #         if plexShareExists is False:
-        #             os.system("osascript -e 'mount volume \"smb://10.0.0.202/plex\"'")
+            # Copy the files locally before encoding
+            subprocess.call(['s3cmd', 'get', sourceFileName, tempDirectory, '--skip-existing'])
 
-        #         # Verify the share exists, if not exit the program as there is an issue
-        #         # mapping the share
-        #         plexShareExists = os.path.exists(plexMedia["plexMount"])
-        #         if plexShareExists is False:
-        #             print("Issue mapping share, aborting!")
-        #             break
+            # Create the process call
+            handBrakeCall = (
+                "flatpak run fr.handbrake.HandBrakeCLI"
+                + handBrakeProfile
+                + " -i "
+                + f'"{tempDirectory + movieFileName}"'
+                + " -o "
+                + f'"{destinationFileName}"'
+            )
 
-        #         # Copy the encoded file to the destination (Plex Media Server)
-        #         if counter == 0:  # If movies, simply copy
-        #             copySuccessful = shutil.copy(destinationFileName, plexDestination)
-        #             print(copySuccessful)
+            # Run the file into HandBrake
+            returned_value = subprocess.call(handBrakeCall, shell=True)
+            fileExists = os.path.isfile(destinationFileName)
 
-        #         elif (
-        #             counter == 1
-        #         ):  # Elif TV Shows, we need to parse where they will be copies to
-        #             # Use regex to parse the string into groups we can use for coping
-        #             result          = re.match(regularExpPattern, destinationFile)
-        #             showName        = result.group(1)
-        #             season          = "Season " + result.group(2)
-        #             plexDestination = s3Media["tvPlexDestination"]  # Reset plex destination
+            # Check if the destination file exists, and is not 0k, if so proceed
+            if returned_value == 0 and fileExists:
+                ## Connect to the Plex share using SCP
+                # Create a connection
+                sshConnection = SSHClient()
 
-        #             # Update the path variable with the Show Name
-        #             plexDestination += showName
+                # Load the host keys
+                sshConnection.load_system_host_keys()
 
-        #             # Check if the show folder exists, if not create one
-        #             pathExists = os.path.exists(plexDestination)
-        #             if not pathExists:
-        #                 # If path does not exist, create folder
-        #                 os.mkdir(plexDestination)
+                # Connect to the host
+                sshConnection.connect(plexHost)
 
-        #             # Update the path variable with the Show Name
-        #             plexDestination += "/" + season
+                # Verify the connection was successful
+                if sshConnection.get_transport().is_active() is False:
+                    print("Failed to connect to Plex host, aborting!")
+                    break
 
-        #             # Checks if the season folder exists, if not creates one
-        #             pathExists = os.path.exists(plexDestination)
-        #             if not pathExists:
-        #                 # If path does not exist, create folder
-        #                 os.mkdir(plexDestination)
+                # Create a SCP client
+                scp = SCPClient(sshConnection.get_transport())
 
-        #             # Copy the file the encoded directory to the Plex destination
-        #             copySuccessful = shutil.copy(destinationFileName, plexDestination)
-        #             print(copySuccessful)
+                # Copy the file to the Plex server
+                if counter == 0:
+                    result = scp.put(destinationFileName, plexDestination)
 
-        #         # Remove files from source after copy (if all previous steps were successful)
-        #         os.remove(sourceFileName)
+                    # Verify the file was copied successfully
+                    if result.succeeded:
+                        print("File copied successfully")
+                    else:
+                        print("File copy failed, aborting!")
+                        break
+                 
+                # Elif TV Shows, we need to parse where they will be copies to       
+                elif counter == 1:
+                    # Use regex to parse the string into groups we can use for coping
+                    result          = re.match(regularExpPattern, destinationFile)
+                    showName        = result.group(1)
+                    season          = "Season " + result.group(2)
+                    plexDestination = s3Media["tvPlexDestination"]  # Reset plex destination
 
-        #     # Else print error and continue to next file
-        #     else:
-        #         print("File was not encoded")
-        #         continue  # Continue to the next
+                    # Update the path variable with the Show Name
+                    plexDestination += showName
+
+                    # Check if the S3 show folder location exists, if not create one
+                    showFolder = subprocess.call(['s3cmd', 'ls', plexDestination])
+
+                    # If path does not exist, create folder
+                    if showFolder != 0:
+                        # Create the folder
+                        subprocess.call(['s3cmd', 'mkdir', plexDestination])
+                    
+                    # Update the path variable with the Show Name
+                    plexDestination += "/" + season
+
+                    # Checks if the season folder exists, if not creates one
+                    seasonFolder = subprocess.call(['s3cmd', 'ls', plexDestination])
+
+                    if seasonFolder != 0:
+                        # Create the folder
+                        subprocess.call(['s3cmd', 'mkdir', plexDestination])
+
+                    # Copy the file the encoded directory to the Plex destination using SCP
+                    scpCopy = scp.put(destinationFileName, plexDestination)
+
+                    # Verify the file was copied successfully by comparing the filehash
+                    if scpCopy.succeeded:
+                        print("File copied successfully")
+                    else:
+                        print("File copy failed, aborting!")
+                        break
+
+                # Copy the encoded file to the archive directory
+                subprocess.call(['s3cmd', 'put', destinationFileName, archiveDestination])
+
+                # Verify the file was copied successfully in S3
+                if subprocess.call(['s3cmd', 'ls', archiveDestination + destinationFile]) == 0:
+                    print("File copied successfully")
+
+                    # Remove files from local source and destination encoding directories
+                    os.remove(destinationFileName)
+                    os.remove(tempDirectory + movieFileName)
+                    subprocess.call(['s3cmd', 'del', sourceFileName])
+                else:
+                    print("File copy failed, aborting!")
+                    break
+
+            # Else print error and continue to next file
+            else:
+                print("File was not encoded")
+                break
 
 
 if __name__ == "__main__":
