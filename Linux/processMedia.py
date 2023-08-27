@@ -8,25 +8,24 @@ import re
 import shutil
 import subprocess
 import sys
-import requests
 from configparser import ConfigParser
+import paramiko
+import requests
 from colorama import Back, Fore, Style
-from paramiko import SSHClient
-from scp import SCPClient
 
 ## Variables ##
 projectPath                     = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 userProfile                     = os.environ["HOME"]
 plexMedia                       = {"plexMount": "/Volumes/plex"}
-plexHost                        = "twasick@vpn.tylerwasick.com"
+plexHost                        = "vpn.tylerwasick.com"
 s3Bucket                        = "s3://plexutil/"
 s3ConfigFile                    = "~/.s3cfg"
 s3Media                         = {
     "movieSource"                   : s3Bucket + "Movies/",
     "tvSource"                      : s3Bucket + "TV/",
     "otherSource"                   : s3Bucket + "Other/",
-    "moviePlexDestination"          : plexMedia["plexMount"] + "/Movies/",  ## TODO: Update to use scp
-    "tvPlexDestination"             : plexMedia["plexMount"] + "/TV/",      ## TODO: Update to use scp
+    "moviePlexDestination"          : "/plex/Movies/",
+    "tvPlexDestination"             : "/plex/TV/",
     "otherPlexDestination"          : "",
     "movieEncodeDestination"        : "/plextemp/Encoded/Movies/",
     "tvEncodeDestination"           : "/plextemp/Encoded/TV/",
@@ -44,6 +43,7 @@ encodingRString                 = ".mp4.mkv.m4v"
 encodedExt                      = ".m4v"
 handBrakeCLIDir                 = projectPath + "/Downloads/"
 handBrakeFlatPakPath            = handBrakeCLIDir + "HandBrakeCLI-1.6.1-x86_64.flatpak"
+handBrakeFlatPakGit             = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrake-1.6.1-x86_64.flatpak"
 handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
 handBrakeProfile                = " --preset-import-gui Plex-HD.json --crop-mode none"
 regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
@@ -200,8 +200,18 @@ def downloadHandbrake() -> bool:
     if process == 0:
         return True  # Exit successfully
     
+    # Check if the HandBrakeCLI directory exists, if not create it
+    if not os.path.exists(handBrakeCLIDir):
+        os.makedirs(handBrakeCLIDir)
+
+    # Check if the HandBrakeCLI file exists, if not download it
+    if not os.path.isfile(handBrakeFlatPakPath):
+        print("Downloading HandBrakeCLI")
+        r = requests.get(handBrakeFlatPakGit, allow_redirects=True)
+        open(handBrakeFlatPakPath, 'wb').write(r.content)
+
     # Install Handbrake using Flatpak TODO: Fix this to use the flatpak repo
-    subprocess.call(['flatpak', '--user', 'install', 'fr.handbrake.HandBrakeCLI', '-y'])
+    subprocess.call(['flatpak', '--user', 'install', handBrakeFlatPakPath, '-y'])
     
     # Verify the install was successful
     process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
@@ -278,7 +288,7 @@ def encodeMedia():
                     movieList.append(parsedResult.group(0))
 
                     # Print result found
-                    print("Added: " + parsedResult.group(0) + "to the list")
+                    print("Added: " + parsedResult.group(0) + " to the list")
 
         # Loop through the list of movies, encode the movie then copy to the
         # appropriate destination
@@ -297,56 +307,47 @@ def encodeMedia():
             # Set the source file destination by concatinating the source path to the file name
             sourceFileName = sourceDirectory + movieFileName
 
-            print("Source file: " + sourceFileName)
+            print("Source file: " + tempDirectory + movieFileName)
             print("Destination file: " + destinationFileName)
 
             # Copy the files locally before encoding
-            subprocess.call(['s3cmd', 'get', sourceFileName, tempDirectory, '--skip-existing'])
+            call = subprocess.call(['s3cmd', 'get', sourceFileName, tempDirectory, '--skip-existing'])
 
             # Create the process call
-            handBrakeCall = (
-                "flatpak run fr.handbrake.HandBrakeCLI"
-                + handBrakeProfile
-                + " -i "
-                + f'"{tempDirectory + movieFileName}"'
-                + " -o "
-                + f'"{destinationFileName}"'
-            )
+            if call == 0:
+                handBrakeCall = (
+                    "flatpak run fr.handbrake.HandBrakeCLI"
+                    + handBrakeProfile
+                    + " -i "
+                    + f'"{tempDirectory + movieFileName}"'
+                    + " -o "
+                    + f'"{destinationFileName}"'
+                )
 
-            # Run the file into HandBrake
-            returned_value = subprocess.call(handBrakeCall, shell=True)
-            fileExists = os.path.isfile(destinationFileName)
+                # Run the file into HandBrake
+                returned_value = subprocess.call(handBrakeCall, shell=True)
+                fileExists = os.path.isfile(destinationFileName)
+
+            # Verify the file was encoded successfully
+            else:
+                # If not, exit
+                print("Failed to copy file, aborting!")
+                break
 
             # Check if the destination file exists, and is not 0k, if so proceed
             if returned_value == 0 and fileExists:
                 ## Connect to the Plex share using SCP
                 # Create a connection
-                sshConnection = SSHClient()
-
-                # Load the host keys
-                sshConnection.load_system_host_keys()
-
-                # Connect to the host
-                sshConnection.connect(plexHost)
-
-                # Verify the connection was successful
-                if sshConnection.get_transport().is_active() is False:
-                    print("Failed to connect to Plex host, aborting!")
-                    break
-
-                # Create a SCP client
-                scp = SCPClient(sshConnection.get_transport())
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
+                client.connect(plexHost, username='twasick',password='' ,key_filename='/home/twasick/.ssh/plex_ed25519')
 
                 # Copy the file to the Plex server
                 if counter == 0:
-                    result = scp.put(destinationFileName, plexDestination)
-
-                    # Verify the file was copied successfully
-                    if result.succeeded:
-                        print("File copied successfully")
-                    else:
-                        print("File copy failed, aborting!")
-                        break
+                    # Setup sftp connection and transmit this script 
+                    sftp    = client.open_sftp() 
+                    sftp.put(destinationFileName, plexDestination + destinationFile + encodedExt)
                  
                 # Elif TV Shows, we need to parse where they will be copies to       
                 elif counter == 1:
@@ -368,7 +369,7 @@ def encodeMedia():
                         subprocess.call(['s3cmd', 'mkdir', plexDestination])
                     
                     # Update the path variable with the Show Name
-                    plexDestination += "/" + season
+                    plexDestination += "/" + season + "/"
 
                     # Checks if the season folder exists, if not creates one
                     seasonFolder = subprocess.call(['s3cmd', 'ls', plexDestination])
@@ -376,16 +377,15 @@ def encodeMedia():
                     if seasonFolder != 0:
                         # Create the folder
                         subprocess.call(['s3cmd', 'mkdir', plexDestination])
-
+                    
+                    # TODO: Refactor
                     # Copy the file the encoded directory to the Plex destination using SCP
-                    scpCopy = scp.put(destinationFileName, plexDestination)
+                    # Setup sftp connection and transmit this script 
+                    sftp    = client.open_sftp() 
+                    sftp.put(destinationFileName, plexDestination + destinationFile + encodedExt)
 
-                    # Verify the file was copied successfully by comparing the filehash
-                    if scpCopy.succeeded:
-                        print("File copied successfully")
-                    else:
-                        print("File copy failed, aborting!")
-                        break
+                # Clost the sftp connection
+                sftp.close()
 
                 # Copy the encoded file to the archive directory
                 subprocess.call(['s3cmd', 'put', destinationFileName, archiveDestination])

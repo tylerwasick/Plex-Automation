@@ -5,4 +5,4 @@ pyOpenSSL >= 23.1.1
 colorama
 configparser
 promptlib
-scp
+paramiko
