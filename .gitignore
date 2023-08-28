@@ -13,6 +13,9 @@ dist/
 # Compiled Python bytecode
 *.py[cod]
 
+# Downloads directory
+/Downloads/*
+
 # Log files
 *.log
 
@@ -49,3 +52,5 @@ HandBrakeCLI*
 *.mov
 *.wmv
 
+# Local files
+*.pid

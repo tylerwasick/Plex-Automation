@@ -43,12 +43,10 @@ regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = projectPath + "/config.ini"
 config                          = ConfigParser()
 sevenZipParams                  = "7zz x " + handBrakeCLIPath + " -o" + handBrakeCLIDir
-# plexMount                   = "/Volumes/plex"
 
 ## TODO:Guard if already running, exit
 ## TODO: Extract subtitles
 ## TODO: Place Movies in folders
-
 
 ## Functions ##
 ##TODO: Read a config file for locations
@@ -57,20 +55,11 @@ def loadSettings():
     def check_7zip_installed():
         try:
             subprocess.check_output(['7zz'])
-            return True
+
         except OSError:
-            return False
-
-    def install_7zip():
-        if sys.platform == 'win32':
-            subprocess.call(['choco', 'install', '7zip'])
-        elif sys.platform == 'darwin':
             subprocess.call(['brew', 'install', 'sevenzip'])
-        else:
-            subprocess.call(['apt-get', 'install', 'p7zip-full'])
 
-    if not check_7zip_installed():
-        install_7zip()
+    check_7zip_installed()
 
 #    # Check for config file
 #    print(Fore.GREEN + "Loading settings")
@@ -243,9 +232,8 @@ def encodeMedia():
                     copySuccessful = shutil.copy(destinationFileName, plexDestination)
                     print(copySuccessful)
 
-                elif (
-                    counter == 1
-                ):  # Elif TV Shows, we need to parse where they will be copies to
+                # Elif TV Shows, we need to parse where they will be copies to
+                elif counter == 1:
                     # Use regex to parse the string into groups we can use for coping
                     result = re.match(regularExpPattern, destinationFile)
                     showName = result.group(1)
