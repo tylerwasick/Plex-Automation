@@ -12,6 +12,7 @@ from configparser import ConfigParser
 import paramiko
 import requests
 from colorama import Back, Fore, Style
+from pid import PidFile
 
 ## Variables ##
 projectPath                     = BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,9 +51,8 @@ regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = projectPath + "/config.ini"
 config                          = ConfigParser()
 
-## TODO:Guard if already running, exit
 ## TODO: Extract subtitles
-## TODO: Place Movies in folders
+## TODO: Place Movies in individual folders
 ## TODO: Work on logging
 ## TODO: Add multi-thread support
 
@@ -341,6 +341,7 @@ def encodeMedia():
                 client = paramiko.SSHClient()
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
  
+                # Connect to the Plex server TODO: Add the ability to specify keyfile and password
                 client.connect(plexHost, username='twasick',password='' ,key_filename='/home/twasick/.ssh/plex_ed25519')
 
                 # Copy the file to the Plex server
@@ -360,28 +361,27 @@ def encodeMedia():
                     # Update the path variable with the Show Name
                     plexDestination += showName
 
-                    # Check if the S3 show folder location exists, if not create one
-                    showFolder = subprocess.call(['s3cmd', 'ls', plexDestination])
+                    # Setup the SCP connection
+                    sftp    = client.open_sftp() 
 
-                    # If path does not exist, create folder
-                    if showFolder != 0:
-                        # Create the folder
-                        subprocess.call(['s3cmd', 'mkdir', plexDestination])
+                    # Check if the SCP path exists, if not create it
+                    try:
+                        sftp.listdir(plexDestination)
+                    except IOError:
+                        sftp.mkdir(plexDestination)
                     
                     # Update the path variable with the Show Name
                     plexDestination += "/" + season + "/"
 
                     # Checks if the season folder exists, if not creates one
-                    seasonFolder = subprocess.call(['s3cmd', 'ls', plexDestination])
-
-                    if seasonFolder != 0:
-                        # Create the folder
-                        subprocess.call(['s3cmd', 'mkdir', plexDestination])
+                    try:
+                        sftp.listdir(plexDestination)
+                    except IOError:
+                        sftp.mkdir(plexDestination)
                     
                     # TODO: Refactor
                     # Copy the file the encoded directory to the Plex destination using SCP
-                    # Setup sftp connection and transmit this script 
-                    sftp    = client.open_sftp() 
+                    # Use SCP to copy data to the Plex server
                     sftp.put(destinationFileName, plexDestination + destinationFile + encodedExt)
 
                 # Clost the sftp connection
@@ -410,21 +410,27 @@ def encodeMedia():
 
 if __name__ == "__main__":
 
-    # Run the app reqirement setup
-    setup       = appSetup()
-    if setup:
-        print("App requirement setup complete")
-    else:
-        print("App requirement setup failed")
-        sys.exit()
+    # Check if the script is already running
+    with PidFile(piddir="."):
+        try:
+            # Run the app reqirement setup
+            setup       = appSetup()
+            if setup:
+                print("App requirement setup complete")
+            else:
+                print("App requirement setup failed")
+                sys.exit()
 
-    # Download Handbrake
-    download    = downloadHandbrake()
-    if download:
-        # If successful, encode media
-        print("Encoding media")
-        encodeMedia()
-    else:
-        # Else exit
-        print("Failed to download Handbrake. Aborting!")
-        sys.exit()
+            # Download Handbrake
+            download    = downloadHandbrake()
+            if download:
+                # If successful, encode media
+                print("Encoding media")
+                encodeMedia()
+            else:
+                # Else exit
+                print("Failed to download Handbrake. Aborting!")
+                sys.exit()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")

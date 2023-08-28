@@ -52,3 +52,5 @@ HandBrakeCLI*
 *.mov
 *.wmv
 
+# Local files
+*.pid
