@@ -155,8 +155,8 @@ def appSetup() -> bool:
                 config['default']['host_bucket']    = s3BucketURL
 
                 # Write the config file
-                with open(s3ConfigFileExp, 'w') as configfile:
-                    config.write(configfile)
+                with open(s3ConfigFileExp, 'w') as configFile:
+                    config.write(configFile)
 
                 # Verify the config file was created
                 if os.path.exists(s3ConfigFileExp):
@@ -294,17 +294,17 @@ def encodeMedia():
         # appropriate destination
         for movie in movieList:
             
-            # Seperate the file name from the path
+            # Separate the file name from the path
             movieFileName = movie.split("/")[-1]
 
             # Remove the file extension before encoding then add the new file
             # extension for the destination
             destinationFile = movieFileName.rstrip(encodingRString)
 
-            # Concatinate the destination file name with the destination path
+            # Concatenate the destination file name with the destination path
             destinationFileName = destinationDirectory + destinationFile + encodedExt
 
-            # Set the source file destination by concatinating the source path to the file name
+            # Set the source file destination by concatenating the source path to the file name
             sourceFileName = sourceDirectory + movieFileName
 
             print("Source file: " + tempDirectory + movieFileName)
@@ -384,7 +384,7 @@ def encodeMedia():
                     # Use SCP to copy data to the Plex server
                     sftp.put(destinationFileName, plexDestination + destinationFile + encodedExt)
 
-                # Clost the sftp connection
+                # Close the sftp connection
                 sftp.close()
 
                 # Copy the encoded file to the archive directory
@@ -413,7 +413,7 @@ if __name__ == "__main__":
     # Check if the script is already running
     with PidFile(piddir="."):
         try:
-            # Run the app reqirement setup
+            # Run the app requirements setup
             setup       = appSetup()
             if setup:
                 print("App requirement setup complete")

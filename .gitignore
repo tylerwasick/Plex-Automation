@@ -49,3 +49,5 @@ HandBrakeCLI*
 *.mov
 *.wmv
 
+# VS Code
+.vscode/
