@@ -210,7 +210,7 @@ def downloadHandbrake() -> bool:
         r = requests.get(handBrakeFlatPakGit, allow_redirects=True)
         open(handBrakeFlatPakPath, 'wb').write(r.content)
 
-    # Install Handbrake using Flatpak TODO: Fix this to use the flatpak repo
+    # Install Handbrake using Flatpak
     subprocess.call(['flatpak', '--user', 'install', handBrakeFlatPakPath, '-y'])
     
     # Verify the install was successful
