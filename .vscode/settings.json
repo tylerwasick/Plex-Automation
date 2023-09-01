@@ -2,5 +2,16 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
     },
-    "python.formatting.provider": "none"
+    "python.formatting.provider": "none",
+    "cSpell.words": [
+        "choco",
+        "flatpak",
+        "osascript",
+        "piddir",
+        "plextemp",
+        "plexutil",
+        "sevenzip",
+        "twasick",
+        "tylerwasick"
+    ]
 }

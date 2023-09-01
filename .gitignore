@@ -53,4 +53,5 @@ HandBrakeCLI*
 *.wmv
 
 # Local files
-*.pid
+*.pid# VS Code
+.vscode/

@@ -51,7 +51,7 @@ sevenZipParams                  = "7zz x " + handBrakeCLIPath + " -o" + handBrak
 ## Functions ##
 ##TODO: Read a config file for locations
 def loadSettings():
-    # Check if 7Zip is installed, if nnot install it
+    # Check if 7Zip is installed, if not install it
     def check_7zip_installed():
         try:
             subprocess.check_output(['7zz'])
@@ -165,7 +165,7 @@ def encodeMedia():
         ## Process Shows ##
         ## Iterate over the source directory
         for dirContent in os.listdir(sourceDirectory):
-            # Join the contants (files and folders) to the original path
+            # Join the contents (files and folders) to the original path
             path = os.path.join(sourceDirectory, dirContent)
 
             # If the file ends with an extension that can be encoded,
@@ -193,10 +193,10 @@ def encodeMedia():
             # extension for the destination
             destinationFile = movie.rstrip(encodingRString)
 
-            # Concatinate the destination file name with the destination path
+            # Concatenate the destination file name with the destination path
             destinationFileName = destinationDirectory + destinationFile + encodedExt
 
-            # Set the source file destination by concatinating the source path to the file name
+            # Set the source file destination by concatenating the source path to the file name
             sourceFileName = sourceDirectory + movie
 
             # Create the process call
