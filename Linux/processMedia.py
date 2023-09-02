@@ -51,13 +51,7 @@ regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = projectPath + "/config.ini"
 config                          = ConfigParser()
 
-## TODO: Extract subtitles
-## TODO: Place Movies in individual folders
-## TODO: Work on logging
-## TODO: Add multi-thread support
-
 ## Functions ##
-##TODO: Read a config file for locations
 def appSetup() -> bool:
     ## Check if required applications are installed
     # Flatpak 
@@ -192,9 +186,6 @@ def appSetup() -> bool:
     
 # Download HandBrakeCLIDir is n ot already downloaded
 def downloadHandbrake() -> bool:
-    ## TODO: Verify hash of the download
-    ## TODO: Check the version of Linux running, current support is for Ubuntu only
-
     # Check if "HandBrakeCLI" is already installed, is so exit and return True
     process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
     if process == 0:
@@ -210,7 +201,7 @@ def downloadHandbrake() -> bool:
         r = requests.get(handBrakeFlatPakGit, allow_redirects=True)
         open(handBrakeFlatPakPath, 'wb').write(r.content)
 
-    # Install Handbrake using Flatpak TODO: Fix this to use the flatpak repo
+    # Install Handbrake using Flatpak
     subprocess.call(['flatpak', '--user', 'install', handBrakeFlatPakPath, '-y'])
     
     # Verify the install was successful
@@ -341,7 +332,7 @@ def encodeMedia():
                 client = paramiko.SSHClient()
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
  
-                # Connect to the Plex server TODO: Add the ability to specify keyfile and password
+                # Connect to the Plex server
                 client.connect(plexHost, username='twasick',password='' ,key_filename='/home/twasick/.ssh/plex_ed25519')
 
                 # Copy the file to the Plex server
@@ -379,7 +370,6 @@ def encodeMedia():
                     except IOError:
                         sftp.mkdir(plexDestination)
                     
-                    # TODO: Refactor
                     # Copy the file the encoded directory to the Plex destination using SCP
                     # Use SCP to copy data to the Plex server
                     sftp.put(destinationFileName, plexDestination + destinationFile + encodedExt)
@@ -406,7 +396,6 @@ def encodeMedia():
             else:
                 print("File was not encoded")
                 break
-
 
 if __name__ == "__main__":
 
