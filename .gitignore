@@ -51,3 +51,6 @@ HandBrakeCLI*
 
 # VS Code
 .vscode/
+
+# Python
+*.pid

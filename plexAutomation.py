@@ -6,9 +6,12 @@ Version             : 0.1.0
 Description         : Python scripts to help automate the process of
                       encoding media files and transferring to your Plex Media Server.
 Author              : Tyler Wasick (github.com/tylerwasick)
-Date                : 09/01/2021
+Date                : 09/01/2023
 License             : GNU General Public License v3.0
-Site                : https://github.com/tylerwasick/Plex-Automation        
+Site                : https://github.com/tylerwasick/Plex-Automation
+=======================================================================================
+Version History     :
+09/01/2023          : Initial Release
 """
 
 ## Standard library imports
