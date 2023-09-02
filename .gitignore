@@ -54,3 +54,4 @@ HandBrakeCLI*
 
 # Python
 *.pid
+__pycache__/
