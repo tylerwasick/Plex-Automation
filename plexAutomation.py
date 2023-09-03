@@ -26,6 +26,7 @@ from pid import PidFile
 
 
 ## Custom library imports
+import models.config as config
 import scripts.appSetup as appSetup
 import scripts.encodeMedia as encodeMedia
 
@@ -68,31 +69,9 @@ configFileGitURL                = "https://raw.githubusercontent.com/tylerwasick
 
 ## Functions
 def main():
-    # Check if the config file exists
-    if os.path.isfile(configFile):
-        print("Config file exists")
-        print(configFile)
-        
-    else:
-        # If file does not exist, create the file with a template from Github
-        print("Config file does not exist, creating one")
-        request = requests.get(configFileGitURL, allow_redirects=True)
-
-        # Save file to the project directory
-        open(configFile, 'wb').write(request.content)
-
-        # Verify the file was created
-        if os.path.isfile(configFile):
-            print("Config file created successfully")
-        else:
-            print("Failed to create config file. Aborting!")
-            sys.exit()
-
-    # Load the config file and parse the values
-    config = configparser.ConfigParser()
-
-        # Prompt the user for the information and create the config file
-    
+    # Load config file
+    print("Loading config file")
+    config.loadConfig(configFile, configFileGitURL)
     
     
     # Run the app requirements setup
