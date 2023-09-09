@@ -15,9 +15,6 @@ Version History     :
 """
 
 ## Standard library imports
-import configparser
-import requests
-import shutil
 import sys
 import os
 from pid import PidFile
@@ -33,9 +30,9 @@ import scripts.encodeMedia as encodeMedia
 ## Variables ##
 projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 userProfile                     = os.environ["HOME"]
-plexMedia                       = {"plexMount": "/Volumes/plex"}
-plexHost                        = "vpn.tylerwasick.com"
-s3Bucket                        = "s3://plexutil/"
+plexMedia                       = {"plexMount": "/Volumes/plex"}    # ✅Location - plex-media.plexMount
+plexHost                        = "vpn.tylerwasick.com"             # ✅Location - media-settings.plexMount (SCP location")
+s3Bucket                        = "s3://plexutil/"                  # ✅Location - media-settings.sourceMount
 s3ConfigFile                    = "~/.s3cfg"
 s3Media                         = {
     "movieSource"                   : s3Bucket + "Movies/",
@@ -65,13 +62,12 @@ handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30
 handBrakeProfile                = " --preset-import-gui settings/Plex-HD.json --crop-mode none"
 regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = projectPath + "/settings/config.ini"
-configFileGitURL                = "https://raw.githubusercontent.com/tylerwasick/Plex-Automation/main/config.ini"
 
 ## Functions
 def main():
     # Load config file
     print("Loading config file")
-    config.loadConfig(configFile, configFileGitURL)
+    config.loadConfig(configFile)
     
     
     # Run the app requirements setup

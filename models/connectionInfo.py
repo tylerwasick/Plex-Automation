@@ -11,6 +11,7 @@ Version History     :
 """
 
 ## Standard library imports
+from enum import Enum
 import sys
 import os
 
@@ -21,26 +22,17 @@ import os
 
 ## Classes
 # Media types
-class MediaTypes:
-    def __init__(self,
-                 movie,
-                 tv,
-                 other):
-        self.movie              = movie
-        self.tv                 = tv
-        self.other              = other
+class MediaTypes(Enum):
+    movie              = 1
+    tv                 = 2
+    other              = 3
 
 # Connection types
-class ConnectionTypes:
-    def __init__(self,
-                 smb,
-                 s3,
-                 scp,
-                 local):
-        self.smb                = smb
-        self.s3                 = s3
-        self.scp                = scp
-        self.local              = local
+class ConnectionTypes(Enum):
+    smb                = 1
+    s3                 = 2
+    scp                = 3
+    local              = 4
 
 ## Functions
 

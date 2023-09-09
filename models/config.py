@@ -20,21 +20,40 @@ import os
 
 
 ## Custom library imports
-
+import connectionInfo
 
 ## Variables
+config                          = configparser.ConfigParser()
+connectionType                  = ["smb", "s3", "scp", "local"]
+mediaSettings                   = {
+    "movieSource"                   : "",
+    "moviesDestination"             : "",
+    "otherDestination"              : "",
+    "otherSource"                   : "",
+    "plexMovies"                    : "",
+    "plexTV"                        : "",
+    "remoteConnectionType"          : "local",
+    "sourceConnectionType"          : "local",
+    "tvDestination"                 : "",
+    "tvSource"                      : ""
+}
+handbrakeSettings               = {
+    "handBrakeProfile"              : " --preset-import-gui Plex-HD.json --crop-mode none"
+}
+
 
 ## Classes
+## TODO: Add the following logic for verification
+##          - Verify the source locations for each folder are unique
+##          - Verify the destination locations for each folder are unique
+##          - 
 # Class to hold the Plex Media Server configuration
 class PlexMediaConfig:
     def __init__(self, 
-                 plexMount, 
                  plexMovies, 
                  plexTV):
-        self.plexMount              = plexMount
         self.plexMovies             = plexMovies
         self.plexTV                 = plexTV
-
 
 # Class to hold the media settings config
 class MediaSettingsConfig:
@@ -45,16 +64,20 @@ class MediaSettingsConfig:
                  moviesDestination, 
                  tvDestination, 
                  otherDestination,
-                 remoteConnectionType,
-                 sourceConnectionType):
-        self.movieSource              = movieSource
-        self.tvSource                 = tvSource
-        self.otherSource              = otherSource
-        self.moviesDestination        = moviesDestination
-        self.tvDestination            = tvDestination
-        self.otherDestination         = otherDestination
-        self.remoteConnectionType     = remoteConnectionType
-        self.sourceConnectionType     = sourceConnectionType
+                 remoteConnectionType: connectionInfo.ConnectionTypes,
+                 sourceConnectionType: connectionInfo.ConnectionTypes,
+                 sourceMount,
+                 plexMount):
+        self.movieSource            = movieSource
+        self.tvSource               = tvSource
+        self.otherSource            = otherSource
+        self.moviesDestination      = moviesDestination
+        self.tvDestination          = tvDestination
+        self.otherDestination       = otherDestination
+        self.remoteConnectionType   = remoteConnectionType
+        self.sourceConnectionType   = sourceConnectionType
+        self.sourceMount            = sourceMount
+        self.plexMount              = plexMount
           
 class handbrake:
     def __init__(self,
@@ -62,18 +85,20 @@ class handbrake:
           self.handBrakeProfile         = handBrakeProfile
 
 ## Functions
-def loadConfig(configFile, configFileGitURL) -> bool:
+def loadConfig(configFile) -> bool:
     # Check if the config file exists
     if os.path.isfile(configFile):
         print("Config file exists: " + configFile)
         
     else:
-        # If file does not exist, create the file with a template from Github
-        print("Config file does not exist, creating one")
-        request = requests.get(configFileGitURL, allow_redirects=True)
+        # If file does not exist, create the config file
+        print("Config file does not exist. Creating config file.")
+        config["media-settings"]    = mediaSettings
+        config["handbrake"]         = handbrakeSettings
 
         # Save file to the project directory
-        open(configFile, 'wb').write(request.content)
+        with open(configFile, "w") as file:
+            config.write(file)
 
         # Verify the file was created
         if os.path.isfile(configFile):
@@ -82,16 +107,12 @@ def loadConfig(configFile, configFileGitURL) -> bool:
             print("Failed to create config file. Aborting!")
             sys.exit()
 
-    # Load the config file and parse the values
-    config = configparser.ConfigParser()
 
     # Read the config file
-
-    # Verify the config file was read successfully
+    config.read(configFile)
 
     # Verify the config file has the required values
-
-        # Else, prompt the user for the information and create the config file
+    
 
         
         # Write the changes to the config file
@@ -100,4 +121,4 @@ def loadConfig(configFile, configFileGitURL) -> bool:
 
 ## Main entry point
 if __name__ == "__main__":
-    print("Placeholder Text")
+    loadConfig("settings/config.ini")
