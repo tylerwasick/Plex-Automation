@@ -12,7 +12,7 @@ Version History     :
 
 ## Standard library imports
 import configparser
-import requests
+import re
 import sys
 import os
 
@@ -45,6 +45,7 @@ mediaSettings                   = {
     "remoteConnectionType"          : "local",
     "sourceConnectionType"          : "local"
 }
+mediaTypes                      = ["movie", "tv", "other"]
 handbrakeSettings               = {
     "handBrakeProfile"              : "--preset-import-gui Plex-HD.json --crop-mode none"
 }
@@ -211,17 +212,36 @@ def loadConfig(configFile) -> bool:
             # Write the changes to the config file
             configUpdater_WriteConfig()
 
-        # Else if source is "SMB", prompt the user for the SMB connection information
-        elif config["media-settings"]["sourceConnectionType"] == connectionType["2"]: # TODO: Also check if the value is empty
-            # Print information regarding using SMB, and request the share information
-            print("Media to be encoded is set to a SMB share, but no share details are found.\n" + 
-                  "Please use your OS credential manager to store the SMB share credentials. This script will NOT prompt for credentials.")
-            smbPath = input("Please enter the SMB path for Movies to be encoded. (Example: \\\\plex-server\\share\\movies): ")
-            print(smbPath)
-        # Else if source is "S3", prompt the user for the S3 connection information
+        # Elif source is "SMB", prompt the user for the SMB connection information
+        elif config["media-settings"]["sourceConnectionType"] == connectionType["2"]:
+            # Loop though the different media types
+            for mediaType in mediaTypes:
+                if config["media-settings"][f"{mediaType}source"] == "": # TODO: Also check if the value is empty
+                    # Print information regarding using SMB
+                    if mediaType.index == 0:
+                        print("Media to be encoded is set to a SMB share, but no share details are found.\n" + 
+                        "Please use your OS credential manager to store the SMB share credentials. This script will NOT prompt for credentials.")
+                    
+                    # Request the SMB path for media to be encoded
+                    smbPath = input(f"Please enter the SMB path for {mediaType} media that is to be encoded. (Example: \\\\file-server\\share\\{mediaType}): ")
+                    
+                    # Check that the path is valid
+                    while not re.match(r'^\\\\[^\\]+(\\[^\\]+)+$', smbPath):
+                        smbPath = input("SMB string is not properly formatted.\nPlease enter the path in a \\\\server\\share format: ")
 
+                    # Update the config file 
+                    config["media-settings"][f"{mediaType}Source"] = smbPath
+                    
+                    # Write changes to the config file
+                    configUpdater_WriteConfig()
+
+
+        # If source is "S3", prompt the user for the S3 connection information
+        elif config["media-settings"]["sourceConnectionType"] == connectionType["3"]:
+            print("S3")
         # Else if source is "SCP", prompt the user for the SCP connection information
-
+        elif config["media-settings"]["sourceConnectionType"] == connectionType["4"]:
+            print("SCP")
         # Validate Plex connection information
 
         # Find the root path for Plex Movies
