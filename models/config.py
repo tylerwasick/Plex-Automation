@@ -24,11 +24,16 @@ import connectionInfo
 
 ## Variables
 config                          = configparser.ConfigParser()
-connectionType                  = ["local", "smb", "s3", "scp"]
+connectionType                  = {
+    "1"                             :"local", 
+    "2"                             :"smb", 
+    "3"                             :"s3", 
+    "4"                             :"scp"
+                                   }
 mediaSettings                   = {
     "movieMKVSource"                : "",
     "movieEncodedDestination"       : "",
-    "movieTempDestination"          : "",
+    "movieTempLocation"             : "",
     "otherEncodedDestination"       : "",
     "otherSource"                   : "",
     "otherTempLocation"             : "",
@@ -89,10 +94,75 @@ class handbrake:
 
 ## Functions
 def loadConfig(configFile) -> bool:
-
+    
     # Local variables
     validConfig                 = True
+
+    # Local functions
+    # Write changes from memory to the config file
+    def configUpdater_WriteConfig():
+        with open(configFile, "w") as file:
+            config.write(file)
+
+    # Update the connection types and wrote the changes to the config file
+    def configUpdater_ConnectionType():
+        # If missing, Prompt the user for Plex connection information
+        if config["media-settings"]["remoteConnectionType"] == "":
+            inputMessage        = "Please select the method of which the script will be using to upload files your Plex server:\n"
+            userInput           = "" 
+
+            for index, item in enumerate(connectionType.values()):
+                inputMessage += f'{index+1}) {item}\n'        
+
+            while ((userInput not in connectionType.keys()) and (userInput not in connectionType.values())):
+
+                print(inputMessage)
+                userInput = input("Selection: ")
+
+            if userInput.isdigit():
+                # Update the config file with the user's selection
+                config["media-settings"]["remoteConnectionType"] = connectionType[userInput]
+                configUpdater_WriteConfig()
+
+                print('Plex connection set to: ' + connectionType[userInput]) #dev
+            
+            else:
+                # Update the config file with the user's selection
+                config["media-settings"]["remoteConnectionType"] = userInput
+                configUpdater_WriteConfig()
+
+                print('Plex connection set to: ' + userInput) #dev
+
+        # If missing, prompt the user for the source type for media that is to be encoded
+        if config["media-settings"]["sourceConnectionType"] == "":
+            # Prompt the user for the source type
+            inputMessage        = "Where are the source MKV (files to be encoded) located?:\n"
+            userInput           = "" 
+
+            for index, item in enumerate(connectionType.values()):
+                inputMessage += f'{index+1}) {item}\n'        
+
+            while ((userInput not in connectionType.keys()) and (userInput not in connectionType.values())):
+
+                print(inputMessage)
+                userInput = input("Selection: ")
+
+            if userInput.isdigit():
+                # Update the config file with the user's selection
+                config["media-settings"]["sourceConnectionType"] = connectionType[userInput]
+                configUpdater_WriteConfig()
+
+                print('Source connection set to: ' + connectionType[userInput])
+            else:
+                # Update the config file with the user's selection
+                config["media-settings"]["sourceConnectionType"] = userInput
+                configUpdater_WriteConfig()
+
+                print('Plex connection set to: ' + userInput) #dev
+
     
+    # Print status output
+    print("Reviewing config file...")
     # Check if the config file exists
     if os.path.isfile(configFile):
         print("Config file exists: " + configFile)
@@ -104,8 +174,7 @@ def loadConfig(configFile) -> bool:
         config["handbrake"]         = handbrakeSettings
 
         # Save file to the project directory
-        with open(configFile, "w") as file:
-            config.write(file)
+        configUpdater_WriteConfig()
 
         # Verify the file was created
         if os.path.isfile(configFile):
@@ -118,6 +187,9 @@ def loadConfig(configFile) -> bool:
     # Read the config file
     config.read(configFile)
 
+    # Print status output
+    print("Validating config file")
+
     # Verify media-settings in config file
     for key in config["media-settings"]:
         # If the value is empty, set the config validation variable to False 
@@ -127,33 +199,35 @@ def loadConfig(configFile) -> bool:
     # If there are values missing in the config file, initiate the setup process
     if not validConfig:
         
-        # Prompt the user for Plex connection information
-        inputMessage        = "Please select the method of which the script will be using to upload files your Plex server:\n"
-        userInput           = ""
-
-        for index, item in enumerate(connectionType):
-            inputMessage += f'{index+1}) {item}\n'
-
-        inputMessage += 'Please select: '
-
-        while (userInput not in "1"):
-            userInput = input(inputMessage)
-            if userInput.isdigit():
-                print('Plex connection set to: ' + connectionType[int(userInput) - 1]) #dev
-            
-            else:
-                print('Plex connection set to: ' + userInput) #dev
-        
-        # Prompt the user for the source type for media that is to be encoded
+        # Verify if the connection types are set, if not prompt the user to set them
+        configUpdater_ConnectionType()
 
         # If the source is "local", set temp locations to "local"
+        if config["media-settings"]["sourceConnectionType"] == connectionType["1"]:
+            config["media-settings"]["movieTempDestination"]    = "local"
+            config["media-settings"]["tvTempLocation"]          = "local"
+            config["media-settings"]["otherTempLocation"]       = "local"
+
+            # Write the changes to the config file
+            configUpdater_WriteConfig()
 
         # Else if source is "SMB", prompt the user for the SMB connection information
-
+        elif config["media-settings"]["sourceConnectionType"] == connectionType["2"]: # TODO: Also check if the value is empty
+            # Print information regarding using SMB, and request the share information
+            print("Media to be encoded is set to a SMB share, but no share details are found.\n" + 
+                  "Please use your OS credential manager to store the SMB share credentials. This script will NOT prompt for credentials.")
+            smbPath = input("Please enter the SMB path for Movies to be encoded. (Example: \\\\plex-server\\share\\movies): ")
+            print(smbPath)
         # Else if source is "S3", prompt the user for the S3 connection information
 
         # Else if source is "SCP", prompt the user for the SCP connection information
 
+        # Validate Plex connection information
+
+        # Find the root path for Plex Movies
+
+        # Find the root path for Plex TV
+        
         # TODO: Validate the connection
 
         # Write the changes to the config file
@@ -183,6 +257,9 @@ def loadConfig(configFile) -> bool:
         else:
             print("Failed to update config file. Aborting!")
             sys.exit()
+
+
+
 
 ## Main entry point
 if __name__ == "__main__":
