@@ -31,7 +31,7 @@ connectionType                  = {
     "4"                             :"scp"
                                    }
 mediaSettings                   = {
-    "movieMKVSource"                : "",
+    "movieSource"                   : "",
     "movieEncodedDestination"       : "",
     "movieTempLocation"             : "",
     "otherEncodedDestination"       : "",
@@ -42,8 +42,8 @@ mediaSettings                   = {
     "tvEncodedDestination"          : "",
     "tvSource"                      : "",
     "tvTempLocation"                : "",
-    "remoteConnectionType"          : "local",
-    "sourceConnectionType"          : "local"
+    "remoteConnectionType"          : "",
+    "sourceConnectionType"          : ""
 }
 mediaTypes                      = ["movie", "tv", "other"]
 handbrakeSettings               = {
@@ -191,6 +191,19 @@ def loadConfig(configFile) -> bool:
     # Print status output
     print("Validating config file")
 
+    # Verify the config file is not empty
+    try:
+        config["media-settings"]
+    except KeyError:
+        config["media-settings"]    = mediaSettings
+        configUpdater_WriteConfig()
+
+    try:
+        config["handbrake"]
+    except KeyError:
+        config["handbrake"]         = handbrakeSettings
+        configUpdater_WriteConfig()
+
     # Verify media-settings in config file
     for key in config["media-settings"]:
         # If the value is empty, set the config validation variable to False 
@@ -216,7 +229,7 @@ def loadConfig(configFile) -> bool:
         elif config["media-settings"]["sourceConnectionType"] == connectionType["2"]:
             # Loop though the different media types
             for mediaType in mediaTypes:
-                if config["media-settings"][f"{mediaType}source"] == "": # TODO: Also check if the value is empty
+                if config["media-settings"][f"{mediaType}source"] == "": 
                     # Print information regarding using SMB
                     if mediaType.index == 0:
                         print("Media to be encoded is set to a SMB share, but no share details are found.\n" + 
@@ -227,7 +240,8 @@ def loadConfig(configFile) -> bool:
                     
                     # Check that the path is valid
                     while not re.match(r'^\\\\[^\\]+(\\[^\\]+)+$', smbPath):
-                        smbPath = input("SMB string is not properly formatted.\nPlease enter the path in a \\\\server\\share format: ")
+                        smbPath = input("SMB string is not properly formatted.\n" + 
+                                        "Please enter the path in a \"\\\\server\\share\" format: ")
 
                     # Update the config file 
                     config["media-settings"][f"{mediaType}Source"] = smbPath
@@ -238,7 +252,27 @@ def loadConfig(configFile) -> bool:
 
         # If source is "S3", prompt the user for the S3 connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["3"]:
-            print("S3")
+            # Loop though the different media types
+            for mediaType in mediaTypes:
+                if config["media-settings"][f"{mediaType}source"] == "": 
+                    # Print information regarding using SMB
+                    if mediaType.index == 0:
+                        print("Media to be encoded is set to a \"S3\" share, but no share details are found.\n" + 
+                        "Credentials are stored in s3cmd. If credentials are not set, there will be a prompt later to set them.")
+                    
+                    # Request the SMB path for media to be encoded
+                    smbPath = input(f"Please enter the S3 path for {mediaType} media that is to be encoded. (Example: s3://bucket/{mediaType}): ")
+                    
+                    # Check that the path is valid
+                    while not re.match(r'^s3://[^/]+(/[^/]+)*$', smbPath):
+                        smbPath = input(f"S3 string is not properly formatted.\n" + 
+                                        "Please enter the path in a \"s3://bucket/{mediaType}\" format: ")
+
+                    # Update the config file 
+                    config["media-settings"][f"{mediaType}Source"] = smbPath
+                    
+                    # Write changes to the config file
+                    configUpdater_WriteConfig()
         # Else if source is "SCP", prompt the user for the SCP connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["4"]:
             print("SCP")
