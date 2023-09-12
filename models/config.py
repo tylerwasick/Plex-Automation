@@ -105,73 +105,74 @@ class handbrake:
           self.handBrakeProfile         = handBrakeProfile
 
 ## Functions
+# Update the connection types and wrote the changes to the config file
+def configUpdater_ConnectionType(configFile):
+    # If missing, Prompt the user for Plex connection information
+    if config["media-settings"]["destinationConnectionType"] == "":
+        inputMessage        = "Please select the method of which the script will be using to upload files your Plex server:\n"
+        userInput           = "" 
+
+        for index, item in enumerate(connectionType.values()):
+            inputMessage += f'{index+1}) {item}\n'        
+
+        while ((userInput not in connectionType.keys()) and (userInput not in connectionType.values())):
+
+            print(inputMessage)
+            userInput = input("Selection: ")
+
+        if userInput.isdigit():
+            # Update the config file with the user's selection
+            config["media-settings"]["destinationConnectionType"] = connectionType[userInput]
+            configUpdater_WriteConfig(configFile)
+
+            print('Plex connection set to: ' + connectionType[userInput]) #dev
+        
+        else:
+            # Update the config file with the user's selection
+            config["media-settings"]["destinationConnectionType"] = userInput
+            configUpdater_WriteConfig(configFile)
+
+            print('Plex connection set to: ' + userInput) #dev
+
+    # If missing, prompt the user for the source type for media that is to be encoded
+    if config["media-settings"]["sourceConnectionType"] == "":
+        # Prompt the user for the source type
+        inputMessage        = "Where are the source MKV (files to be encoded) located?:\n"
+        userInput           = "" 
+
+        for index, item in enumerate(connectionType.values()):
+            inputMessage += f'{index+1}) {item}\n'        
+
+        while ((userInput not in connectionType.keys()) and (userInput not in connectionType.values())):
+
+            print(inputMessage)
+            userInput = input("Selection: ")
+
+        if userInput.isdigit():
+            # Update the config file with the user's selection
+            config["media-settings"]["sourceConnectionType"] = connectionType[userInput]
+            configUpdater_WriteConfig(configFile)
+
+            print('Source connection set to: ' + connectionType[userInput])
+        else:
+            # Update the config file with the user's selection
+            config["media-settings"]["sourceConnectionType"] = userInput
+            configUpdater_WriteConfig(configFile)
+
+            print('Plex connection set to: ' + userInput) #dev
+
+# Write changes from memory to the config file
+def configUpdater_WriteConfig(configFile):
+    with open(configFile, "w") as file:
+        config.write(file)
+
 def loadConfig(configFile) -> bool:
     
     # Local variables
     validConfig                 = True
 
     # Local functions
-    # Write changes from memory to the config file
-    def configUpdater_WriteConfig():
-        with open(configFile, "w") as file:
-            config.write(file)
 
-    # Update the connection types and wrote the changes to the config file
-    def configUpdater_ConnectionType():
-        # If missing, Prompt the user for Plex connection information
-        if config["media-settings"]["destinationConnectionType"] == "":
-            inputMessage        = "Please select the method of which the script will be using to upload files your Plex server:\n"
-            userInput           = "" 
-
-            for index, item in enumerate(connectionType.values()):
-                inputMessage += f'{index+1}) {item}\n'        
-
-            while ((userInput not in connectionType.keys()) and (userInput not in connectionType.values())):
-
-                print(inputMessage)
-                userInput = input("Selection: ")
-
-            if userInput.isdigit():
-                # Update the config file with the user's selection
-                config["media-settings"]["destinationConnectionType"] = connectionType[userInput]
-                configUpdater_WriteConfig()
-
-                print('Plex connection set to: ' + connectionType[userInput]) #dev
-            
-            else:
-                # Update the config file with the user's selection
-                config["media-settings"]["destinationConnectionType"] = userInput
-                configUpdater_WriteConfig()
-
-                print('Plex connection set to: ' + userInput) #dev
-
-        # If missing, prompt the user for the source type for media that is to be encoded
-        if config["media-settings"]["sourceConnectionType"] == "":
-            # Prompt the user for the source type
-            inputMessage        = "Where are the source MKV (files to be encoded) located?:\n"
-            userInput           = "" 
-
-            for index, item in enumerate(connectionType.values()):
-                inputMessage += f'{index+1}) {item}\n'        
-
-            while ((userInput not in connectionType.keys()) and (userInput not in connectionType.values())):
-
-                print(inputMessage)
-                userInput = input("Selection: ")
-
-            if userInput.isdigit():
-                # Update the config file with the user's selection
-                config["media-settings"]["sourceConnectionType"] = connectionType[userInput]
-                configUpdater_WriteConfig()
-
-                print('Source connection set to: ' + connectionType[userInput])
-            else:
-                # Update the config file with the user's selection
-                config["media-settings"]["sourceConnectionType"] = userInput
-                configUpdater_WriteConfig()
-
-                print('Plex connection set to: ' + userInput) #dev
-    
     # Print status output
     print("Reviewing config file...")
     # Check if the config file exists
@@ -185,7 +186,7 @@ def loadConfig(configFile) -> bool:
         config["handbrake"]         = handbrakeSettings
 
         # Save file to the project directory
-        configUpdater_WriteConfig()
+        configUpdater_WriteConfig(configFile)
 
         # Verify the file was created
         if os.path.isfile(configFile):
@@ -207,26 +208,26 @@ def loadConfig(configFile) -> bool:
         config["media-settings"]
     except KeyError:
         config["media-settings"]    = mediaSettings
-        configUpdater_WriteConfig()
+        configUpdater_WriteConfig(configFile)
 
     # Verify handbrake settings in config file exists
     try:
         config["handbrake"]
     except KeyError:
         config["handbrake"]         = handbrakeSettings
-        configUpdater_WriteConfig()
+        configUpdater_WriteConfig(configFile)
 
     # Verify SCP settings in the config file exist
     try:
         config["scp-source"]
     except KeyError:
         config["scp-source"]        = scpSettings
-        configUpdater_WriteConfig()
+        configUpdater_WriteConfig(configFile)
     try:
         config["scp-destination"]
     except KeyError:
         config["scp-destination"]   = scpSettings
-        configUpdater_WriteConfig()
+        configUpdater_WriteConfig(configFile)
 
     # Verify media-settings in config file
     for key in config["media-settings"]:
@@ -238,7 +239,7 @@ def loadConfig(configFile) -> bool:
     if not validConfig:
         
         # Verify if the connection types are set, if not prompt the user to set them
-        configUpdater_ConnectionType()
+        configUpdater_ConnectionType(configFile)
 
         # If the source is "local", set temp locations to "local"
         if config["media-settings"]["sourceConnectionType"] == connectionType["1"]:
@@ -247,7 +248,7 @@ def loadConfig(configFile) -> bool:
             config["media-settings"]["otherTempLocation"]       = "local"
 
             # Write the changes to the config file
-            configUpdater_WriteConfig()
+            configUpdater_WriteConfig(configFile)
 
         #TODO: Refactor the following code to be more efficient
         # Elif source is "SMB", prompt the user for the SMB connection information
@@ -272,7 +273,7 @@ def loadConfig(configFile) -> bool:
                     config["media-settings"][f"{mediaType}Source"] = smbPath
                     
                     # Write changes to the config file
-                    configUpdater_WriteConfig()
+                    configUpdater_WriteConfig(configFile)
 
         # If source is "S3", prompt the user for the S3 connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["3"]:
@@ -296,7 +297,7 @@ def loadConfig(configFile) -> bool:
                     config["media-settings"][f"{mediaType}Source"] = smbPath
                     
                     # Write changes to the config file
-                    configUpdater_WriteConfig()
+                    configUpdater_WriteConfig(configFile)
                     
         # Else if source is "SCP", prompt the user for the SCP connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["4"]:
@@ -329,7 +330,7 @@ def loadConfig(configFile) -> bool:
                     config[connectionSCPType[0]]["scpKeyFile"]     = scpKeyFile
 
                     # Write changes to the config file
-                    configUpdater_WriteConfig()
+                    configUpdater_WriteConfig(configFile)
                     
                 # Loop though the different media types
                 for mediaType in mediaTypes:
@@ -351,7 +352,7 @@ def loadConfig(configFile) -> bool:
                         config["media-settings"][f"{mediaType}Source"] = smbPath
                         
                         # Write changes to the config file
-                        configUpdater_WriteConfig()
+                        configUpdater_WriteConfig(configFile)
 
 
                 # Loop though the different media types
@@ -374,7 +375,7 @@ def loadConfig(configFile) -> bool:
                         config["media-settings"][f"{mediaType}Source"] = smbPath
                         
                         # Write changes to the config file
-                        configUpdater_WriteConfig()
+                        configUpdater_WriteConfig(configFile)
 
         # Validate Plex connection information
 
