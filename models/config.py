@@ -24,12 +24,17 @@ import connectionInfo
 
 ## Variables
 config                          = configparser.ConfigParser()
+configHeaders                   = ["media-settings", "handbrake", "scp-source", "scp-destination"]
 connectionType                  = {
     "1"                             :"local", 
     "2"                             :"smb", 
     "3"                             :"s3", 
     "4"                             :"scp"
-                                   }
+}
+connectionSCPTypes              = {
+    "scp-source"                    : "sourceConnectionType",
+    "scp-destination"               : "destinationConnectionType"
+}
 mediaSettings                   = {
     "movieSource"                   : "",
     "movieEncodedDestination"       : "",
@@ -42,8 +47,14 @@ mediaSettings                   = {
     "tvEncodedDestination"          : "",
     "tvSource"                      : "",
     "tvTempLocation"                : "",
-    "remoteConnectionType"          : "",
+    "destinationConnectionType"     : "",
     "sourceConnectionType"          : ""
+}
+scpSettings                     = { 
+    "scpHost"                       : "",
+    "scpUsername"                   : "",
+    "scpPort"                       : "",
+    "scpKeyFile"                    : ""
 }
 mediaTypes                      = ["movie", "tv", "other"]
 handbrakeSettings               = {
@@ -73,20 +84,20 @@ class MediaSettingsConfig:
                  moviesDestination, 
                  tvDestination, 
                  otherDestination,
-                 remoteConnectionType: connectionInfo.ConnectionTypes,
+                 destinationConnectionType: connectionInfo.ConnectionTypes,
                  sourceConnectionType: connectionInfo.ConnectionTypes,
                  sourceMount,
                  plexMount):
-        self.movieSource            = movieSource
-        self.tvSource               = tvSource
-        self.otherSource            = otherSource
-        self.moviesDestination      = moviesDestination
-        self.tvDestination          = tvDestination
-        self.otherDestination       = otherDestination
-        self.remoteConnectionType   = remoteConnectionType
-        self.sourceConnectionType   = sourceConnectionType
-        self.sourceMount            = sourceMount
-        self.plexMount              = plexMount
+        self.movieSource                = movieSource
+        self.tvSource                   = tvSource
+        self.otherSource                = otherSource
+        self.moviesDestination          = moviesDestination
+        self.tvDestination              = tvDestination
+        self.otherDestination           = otherDestination
+        self.destinationConnectionType  = destinationConnectionType
+        self.sourceConnectionType       = sourceConnectionType
+        self.sourceMount                = sourceMount
+        self.plexMount                  = plexMount
           
 class handbrake:
     def __init__(self,
@@ -108,7 +119,7 @@ def loadConfig(configFile) -> bool:
     # Update the connection types and wrote the changes to the config file
     def configUpdater_ConnectionType():
         # If missing, Prompt the user for Plex connection information
-        if config["media-settings"]["remoteConnectionType"] == "":
+        if config["media-settings"]["destinationConnectionType"] == "":
             inputMessage        = "Please select the method of which the script will be using to upload files your Plex server:\n"
             userInput           = "" 
 
@@ -122,14 +133,14 @@ def loadConfig(configFile) -> bool:
 
             if userInput.isdigit():
                 # Update the config file with the user's selection
-                config["media-settings"]["remoteConnectionType"] = connectionType[userInput]
+                config["media-settings"]["destinationConnectionType"] = connectionType[userInput]
                 configUpdater_WriteConfig()
 
                 print('Plex connection set to: ' + connectionType[userInput]) #dev
             
             else:
                 # Update the config file with the user's selection
-                config["media-settings"]["remoteConnectionType"] = userInput
+                config["media-settings"]["destinationConnectionType"] = userInput
                 configUpdater_WriteConfig()
 
                 print('Plex connection set to: ' + userInput) #dev
@@ -160,7 +171,6 @@ def loadConfig(configFile) -> bool:
                 configUpdater_WriteConfig()
 
                 print('Plex connection set to: ' + userInput) #dev
-
     
     # Print status output
     print("Reviewing config file...")
@@ -192,16 +202,30 @@ def loadConfig(configFile) -> bool:
     print("Validating config file")
 
     # Verify the config file is not empty
+    # Verify media-settings settings in config file exists
     try:
         config["media-settings"]
     except KeyError:
         config["media-settings"]    = mediaSettings
         configUpdater_WriteConfig()
 
+    # Verify handbrake settings in config file exists
     try:
         config["handbrake"]
     except KeyError:
         config["handbrake"]         = handbrakeSettings
+        configUpdater_WriteConfig()
+
+    # Verify SCP settings in the config file exist
+    try:
+        config["scp-source"]
+    except KeyError:
+        config["scp-source"]        = scpSettings
+        configUpdater_WriteConfig()
+    try:
+        config["scp-destination"]
+    except KeyError:
+        config["scp-destination"]   = scpSettings
         configUpdater_WriteConfig()
 
     # Verify media-settings in config file
@@ -225,6 +249,7 @@ def loadConfig(configFile) -> bool:
             # Write the changes to the config file
             configUpdater_WriteConfig()
 
+        #TODO: Refactor the following code to be more efficient
         # Elif source is "SMB", prompt the user for the SMB connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["2"]:
             # Loop though the different media types
@@ -249,7 +274,6 @@ def loadConfig(configFile) -> bool:
                     # Write changes to the config file
                     configUpdater_WriteConfig()
 
-
         # If source is "S3", prompt the user for the S3 connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["3"]:
             # Loop though the different media types
@@ -273,9 +297,85 @@ def loadConfig(configFile) -> bool:
                     
                     # Write changes to the config file
                     configUpdater_WriteConfig()
+                    
         # Else if source is "SCP", prompt the user for the SCP connection information
         elif config["media-settings"]["sourceConnectionType"] == connectionType["4"]:
-            print("SCP")
+
+            # Loop through the scp connections
+            for connectionSCPType in connectionSCPTypes.items():
+                
+                # Check if the SCP connection is set, if not prompt the user to set it
+                if config[connectionSCPType[0]]["scpHost"] == "" and config["media-settings"][connectionSCPType[1]] != "" and config["media-settings"][connectionSCPType[1]] == "scp":
+                    if connectionSCPType[0] == "scp-source":
+                        location        = "source"
+                    else:
+                        location        = "destination"
+                    
+                    # Prompt the user for the SCP connection information
+                    print(f"Please enter the SCP connection information for your {location} location")
+                    host        = input(f"Please supply the hostname or IP for the {location} location: ")
+                    username    = input(f"Please supply the username for the {location} location: ")
+                    port        = input(f"Please supply the port for the {location} location (default: 22): ")
+                    scpKeyFile  = input(f"Please supply the path to the key file for the {location} location (direct file path): ")
+
+                    # Validate the port number
+                    if port == "":
+                        port = "22"
+
+                    # Update the config file
+                    config[connectionSCPType[0]]["scpHost"]        = host
+                    config[connectionSCPType[0]]["scpUsername"]    = username
+                    config[connectionSCPType[0]]["scpPort"]        = port
+                    config[connectionSCPType[0]]["scpKeyFile"]     = scpKeyFile
+
+                    # Write changes to the config file
+                    configUpdater_WriteConfig()
+                    
+                # Loop though the different media types
+                for mediaType in mediaTypes:
+                    if config["media-settings"][f"{mediaType}source"] == "": 
+                        # Print information regarding using SMB
+                        if mediaType.index == 0:
+                            print("Media to be encoded is set to a \"SCP\" share, but no share details are found.\n" + 
+                            "Currently only ssk key's are supported for authentication.")
+                        
+                        # Request the SMB path for media to be encoded
+                        smbPath = input(f"Please enter the SCP path for {mediaType} media that is to be encoded. (Example: /share/{mediaType}): ")
+                        
+                        # Check that the path is valid
+                        while not re.match(r'^/[^/]+(/[^/]+)*$', smbPath):
+                            smbPath = input(f"SCP string is not properly formatted.\n" + 
+                                            "Please enter the path in a \"/folder/{mediaType}\" format: ")
+
+                        # Update the config file 
+                        config["media-settings"][f"{mediaType}Source"] = smbPath
+                        
+                        # Write changes to the config file
+                        configUpdater_WriteConfig()
+
+
+                # Loop though the different media types
+                for mediaType in mediaTypes:
+                    if config["media-settings"][f"{mediaType}source"] == "": 
+                        # Print information regarding using SMB
+                        if mediaType.index == 0:
+                            print("Media to be encoded is set to a \"SCP\" path, but no share details are found.\n" + 
+                            "Credentials are stored using a ssh key only at this time. If there are no keys created, please exit and start the script again once generated.")
+                        
+                        # Request the SMB path for media to be encoded
+                        smbPath = input(f"Please enter the SCP path for {mediaType} media that is to be encoded. (Example: /media/{mediaType}): ")
+                        
+                        # Check that the path is valid
+                        while not re.match(r'^\/[^/]+(\/[^/]+)+$', smbPath):
+                            smbPath = input(f"S3 string is not properly formatted.\n" + 
+                                            "Please enter the path, in a \"/media/{mediaType}\" format: ")
+
+                        # Update the config file 
+                        config["media-settings"][f"{mediaType}Source"] = smbPath
+                        
+                        # Write changes to the config file
+                        configUpdater_WriteConfig()
+
         # Validate Plex connection information
 
         # Find the root path for Plex Movies
@@ -318,3 +418,9 @@ def loadConfig(configFile) -> bool:
 ## Main entry point
 if __name__ == "__main__":
     loadConfig("settings/config.ini")
+    # connectionSCPTypes              = {
+    #     "scp-source"                    : "sourceConnectionType",
+    #     "scp-destination"               : "remoteConnectionType"
+    # }
+    # for i in connectionSCPTypes.items():
+    #     print(f"{i.index}")

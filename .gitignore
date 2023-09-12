@@ -55,3 +55,6 @@ HandBrakeCLI*
 # Python
 *.pid
 __pycache__/
+
+# Development
+*dev*
