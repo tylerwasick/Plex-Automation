@@ -23,7 +23,7 @@ from pid import PidFile
 
 
 ## Custom library imports
-import models.config as config
+import scripts.config as config
 import scripts.appSetup as appSetup
 import scripts.encodeMedia as encodeMedia
 
