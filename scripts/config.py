@@ -257,11 +257,9 @@ def loadConfig(configFile) -> bool:
         # locationType is a string that is either "source", "destination", or "temp"
         # connectionType is a string that is either "local", "smb", "s3", or "scp
         def configUpdater_SetMediaLocations(locationType, connectionType):        
-            # Print a blank line for formatting and ease of reading
-            print("")
-            
             # Local variables
-            # mediaAction             = ""
+            mediaAction             = ""
+            counter                 = 0
 
             # Set message properties based on the input location
             if locationType == "source":
@@ -271,32 +269,36 @@ def loadConfig(configFile) -> bool:
             
             # Loop though the different media types based on the inputs (tv, movie, other)
             for mediaType in mediaTypes:
-
+                
                 # Set the messages based on the connection type
-                if connectionType == "local":
-                    message1        = ""
-                    message2        = ""
-                    message3        = ""
-                    regEx           = ""
-                elif connectionType == "temp":
-                    message1        = ""
-                    message2        = ""
-                    message3        = ""
-                    regEx           = ""
+                if locationType == "temp":
+                    message1        = f"Media to be encoded is set to a remote path. Please enter a local path for the temp location."
+                    message2        = f"Please enter the path for {mediaType} media to be encoded. (Example: /plexTemp/{mediaType}): "
+                    message3        = f"Local path is not properly formatted.\nPlease enter the path in a \"/plexTemp/{mediaType}\" format: "
+                    regEx           = r'^/[^/]+(/[^/]+)*$'
+
+                elif connectionType == "local":
+                    message1        = f"Media to be {mediaAction} is set to a local path."
+                    message2        = f"Please enter the path for {mediaType} media to be encoded. (Example: /folder/{mediaType}): "
+                    message3        = f"Local path is not properly formatted.\nPlease enter the path in a \"/folder/{mediaType}\" format: "
+                    regEx           = r'^/[^/]+(/[^/]+)*$'
+
                 elif connectionType == "smb":
                     message1        = f"Media to be {mediaAction} is set to a SMB share, but no share details are found.\nPlease use your OS credential manager to store the SMB share credentials. This script will NOT prompt for credentials."
                     message2        = f"Please enter the {connectionType} path for {mediaType} media to be encoded. (Example: \\\\file-server\\share\\{mediaType}): "
-                    message3        = "SMB string is not properly formatted.\nPlease enter the path in a \"\\\\file-server\\share\\{mediaType}\" format: "
+                    message3        = f"SMB string is not properly formatted.\nPlease enter the path in a \"\\\\file-server\\share\\{mediaType}\" format: "
                     regEx           = r'^\\\\[^\\]+(\\[^\\]+)+$'
+
                 elif connectionType == "s3":
                     message1        = f"Media to be {mediaAction} is set to a \"S3\" share, but no share details are found.\nCredentials are stored in s3cmd. If credentials are not set, there will be a prompt later to set them."
                     message2        = f"Please enter the {connectionType} path for {mediaType} media to be encoded. (Example: s3://bucket/share/{mediaType}): "
-                    message3        = "S3 string is not properly formatted.\nPlease enter the path in a \"s3://bucket/share/{mediaType}\" format: "
+                    message3        = f"S3 string is not properly formatted.\nPlease enter the path in a \"s3://bucket/share/{mediaType}\" format: "
                     regEx           = r'^s3://[^/]+(/[^/]+)*$'
+                    
                 elif connectionType == "scp":
                     message1        = f"Media to be {mediaAction} is set to a \"SCP\" share, but no share details are found.\nCurrently only ssk key's are supported for authentication."
                     message2        = f"Please enter the {connectionType} path for {mediaType} media to be encoded. (Example: /folder/{mediaType}): "
-                    message3        = "SCP string is not properly formatted.\nPlease enter the path in a \"/folder/{mediaType}\" format: "
+                    message3        = f"SCP string is not properly formatted.\nPlease enter the path in a \"/folder/{mediaType}\" format: "
                     regEx           = r'^/[^/]+(/[^/]+)*$'
                 
                 else:
@@ -307,7 +309,9 @@ def loadConfig(configFile) -> bool:
                 if config["media-settings"][f"{mediaType}{locationType}"] == "": 
                     # Print information regarding using SMB
                     # Using if statement to limit the amount of times the message is printed
-                    if mediaType.index == 0:
+                    if counter == 0:
+                        # Print a blank line for formatting and ease of reading
+                        print("")
                         print(message1)
                     
                     # Request the SMB path for media to be encoded
@@ -323,144 +327,30 @@ def loadConfig(configFile) -> bool:
                     # Write changes to the config file
                     configUpdater_WriteConfig(configFile)
 
+                    # Increment the counter
+                    counter += 1
+
+                else:
+                    # Increment the counter
+                    counter += 1
+
+                    # If the source location is not local, also prompt for the temp location
+                    # if locationType == "source" and connectionType != "local":
+                    #     # Set the temp locations for media to be encoded
+                    #     print("Temp location is set to local")
+                        
+
 
         # Set the source locations for media to be encoded
-        configUpdater_SetMediaLocations("Source", config["media-settings"]["sourceConnectionType"])
+        configUpdater_SetMediaLocations("source", config["media-settings"]["sourceConnectionType"])
 
         # If the source location is not local, also prompt for the temp location
         if config["media-settings"]["sourceConnectionType"] != connectionType["1"]:
             # Set the temp locations for media to be encoded
-            configUpdater_SetMediaLocations("Temp", config["media-settings"]["sourceConnectionType"])
+            configUpdater_SetMediaLocations("temp", config["media-settings"]["sourceConnectionType"])
 
         # Set the destination locations for media after it has been encoded
-        configUpdater_SetMediaLocations("Destination", config["media-settings"]["destinationConnectionType"])
-
-
-        # # Elif source is "SMB", prompt the user for the SMB connection information
-        # elif config["media-settings"]["sourceConnectionType"] == connectionType["2"]:
-        #     # Loop though the different media types
-        #     for mediaType in mediaTypes:
-        #         if config["media-settings"][f"{mediaType}source"] == "": 
-        #             # Print information regarding using SMB
-        #             if mediaType.index == 0:
-        #                 print("Media to be encoded is set to a SMB share, but no share details are found.\n" + 
-        #                 "Please use your OS credential manager to store the SMB share credentials. This script will NOT prompt for credentials.")
-                    
-        #             # Request the SMB path for media to be encoded
-        #             smbPath = input(f"Please enter the SMB path for {mediaType} media that is to be encoded. (Example: \\\\file-server\\share\\{mediaType}): ")
-                    
-        #             # Check that the path is valid
-        #             while not re.match(r'^\\\\[^\\]+(\\[^\\]+)+$', smbPath):
-        #                 smbPath = input("SMB string is not properly formatted.\n" + 
-        #                                 "Please enter the path in a \"\\\\server\\share\" format: ")
-
-        #             # Update the config file 
-        #             config["media-settings"][f"{mediaType}Source"] = smbPath
-                    
-        #             # Write changes to the config file
-        #             configUpdater_WriteConfig(configFile)
-
-        # # If source is "S3", prompt the user for the S3 connection information
-        # elif config["media-settings"]["sourceConnectionType"] == connectionType["3"]:
-        #     # Loop though the different media types
-        #     for mediaType in mediaTypes:
-        #         if config["media-settings"][f"{mediaType}source"] == "": 
-        #             # Print information regarding using SMB
-        #             if mediaType.index == 0:
-        #                 print("Media to be encoded is set to a \"S3\" share, but no share details are found.\n" + 
-        #                 "Credentials are stored in s3cmd. If credentials are not set, there will be a prompt later to set them.")
-                    
-        #             # Request the SMB path for media to be encoded
-        #             smbPath = input(f"Please enter the S3 path for {mediaType} media that is to be encoded. (Example: s3://bucket/{mediaType}): ")
-                    
-        #             # Check that the path is valid
-        #             while not re.match(r'^s3://[^/]+(/[^/]+)*$', smbPath):
-        #                 smbPath = input(f"S3 string is not properly formatted.\n" + 
-        #                                 "Please enter the path in a \"s3://bucket/{mediaType}\" format: ")
-
-        #             # Update the config file 
-        #             config["media-settings"][f"{mediaType}Source"] = smbPath
-                    
-        #             # Write changes to the config file
-        #             configUpdater_WriteConfig(configFile)
-                    
-        # # Else if source is "SCP", prompt the user for the SCP connection information
-        # elif config["media-settings"]["sourceConnectionType"] == connectionType["4"]:
-
-        #     # Loop through the scp connections
-        #     for connectionSCPType in connectionSCPTypes.items():
-                
-        #         # Check if the SCP connection is set, if not prompt the user to set it
-        #         if config[connectionSCPType[0]]["scpHost"] == "" and config["media-settings"][connectionSCPType[1]] != "" and config["media-settings"][connectionSCPType[1]] == "scp":
-        #             if connectionSCPType[0] == "scp-source":
-        #                 location        = "source"
-        #             else:
-        #                 location        = "destination"
-                    
-        #             # Prompt the user for the SCP connection information
-        #             print(f"Please enter the SCP connection information for your {location} location")
-        #             host        = input(f"Please supply the hostname or IP for the {location} location: ")
-        #             username    = input(f"Please supply the username for the {location} location: ")
-        #             port        = input(f"Please supply the port for the {location} location (default: 22): ")
-        #             scpKeyFile  = input(f"Please supply the path to the key file for the {location} location (direct file path): ")
-
-        #             # Validate the port number
-        #             if port == "":
-        #                 port = "22"
-
-        #             # Update the config file
-        #             config[connectionSCPType[0]]["scpHost"]        = host
-        #             config[connectionSCPType[0]]["scpUsername"]    = username
-        #             config[connectionSCPType[0]]["scpPort"]        = port
-        #             config[connectionSCPType[0]]["scpKeyFile"]     = scpKeyFile
-
-        #             # Write changes to the config file
-        #             configUpdater_WriteConfig(configFile)
-                    
-        #         # Loop though the different media types
-        #         for mediaType in mediaTypes:
-        #             if config["media-settings"][f"{mediaType}source"] == "": 
-        #                 # Print information regarding using SMB
-        #                 if mediaType.index == 0:
-        #                     print("Media to be encoded is set to a \"SCP\" share, but no share details are found.\n" + 
-        #                     "Currently only ssk key's are supported for authentication.")
-                        
-        #                 # Request the SMB path for media to be encoded
-        #                 smbPath = input(f"Please enter the SCP path for {mediaType} media that is to be encoded. (Example: /share/{mediaType}): ")
-                        
-        #                 # Check that the path is valid
-        #                 while not re.match(r'^/[^/]+(/[^/]+)*$', smbPath):
-        #                     smbPath = input(f"SCP string is not properly formatted.\n" + 
-        #                                     "Please enter the path in a \"/folder/{mediaType}\" format: ")
-
-        #                 # Update the config file 
-        #                 config["media-settings"][f"{mediaType}Source"] = smbPath
-                        
-        #                 # Write changes to the config file
-        #                 configUpdater_WriteConfig(configFile)
-
-
-        #         # Loop though the different media types
-        #         for mediaType in mediaTypes:
-        #             if config["media-settings"][f"{mediaType}source"] == "": 
-        #                 # Print information regarding using SMB
-        #                 if mediaType.index == 0:
-        #                     print("Media to be encoded is set to a \"SCP\" path, but no share details are found.\n" + 
-        #                     "Credentials are stored using a ssh key only at this time. If there are no keys created, please exit and start the script again once generated.")
-                        
-        #                 # Request the SMB path for media to be encoded
-        #                 smbPath = input(f"Please enter the SCP path for {mediaType} media that is to be encoded. (Example: /media/{mediaType}): ")
-                        
-        #                 # Check that the path is valid
-        #                 while not re.match(r'^\/[^/]+(\/[^/]+)+$', smbPath):
-        #                     smbPath = input(f"S3 string is not properly formatted.\n" + 
-        #                                     "Please enter the path, in a \"/media/{mediaType}\" format: ")
-
-        #                 # Update the config file 
-        #                 config["media-settings"][f"{mediaType}Source"] = smbPath
-                        
-        #                 # Write changes to the config file
-        #                 configUpdater_WriteConfig(configFile)
+        configUpdater_SetMediaLocations("destination", config["media-settings"]["destinationConnectionType"])
 
         # Validate Plex connection information
 
