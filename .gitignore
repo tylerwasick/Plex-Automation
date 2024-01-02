@@ -55,3 +55,7 @@ HandBrakeCLI*
 # Local files
 *.pid# VS Code
 .vscode/
+
+# Python
+*.pid
+__pycache__/
