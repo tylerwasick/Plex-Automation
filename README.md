@@ -20,5 +20,11 @@ The Linux application is designed for a Debian based Linux as the server process
 Not started yet
 [HandbrakeCLI - Windows](https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrakeCLI-1.6.1-win-x86_64.zip)
 
+## Licensing
+Not started yet
+
+## Credits
+Not started yet
+
 ## Feedback
 If you are using the project, please use the Issues and Pull Requests for project feedback.

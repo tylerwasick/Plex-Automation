@@ -13,6 +13,9 @@ dist/
 # Compiled Python bytecode
 *.py[cod]
 
+# Downloads directory
+/Downloads/*
+
 # Log files
 *.log
 
@@ -49,7 +52,8 @@ HandBrakeCLI*
 *.mov
 *.wmv
 
-# VS Code
+# Local files
+*.pid# VS Code
 .vscode/
 
 # Python
