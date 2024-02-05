@@ -1,0 +1,6 @@
+## Markdown files
+*.md
+
+## Development files
+.github
+.gitignore
