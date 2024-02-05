@@ -13,7 +13,7 @@ Site                : https://github.com/tylerwasick/Plex-Automation
 """
 
 ## Standard library imports
-# import configparser
+import configparser
 # import requests
 # import shutil
 # import sys
@@ -64,6 +64,7 @@ debugLevel                      = 5
 # regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = "settings/config.ini"
 # configFileGitURL                = "https://raw.githubusercontent.com/tylerwasick/Plex-Automation/main/config.ini"
+missingItems                    = ""
 
 ## Functions
 def main():
@@ -76,12 +77,32 @@ def main():
         print("Config file does not exist, please create and update the config.ini file. Exiting!")
         sys.exit(1)
     
-#     # Load the config file and parse the values
-#     config = configparser.ConfigParser()
+    # Load the config file and parse the values
+    config = configparser.ConfigParser()
 
-#         # Prompt the user for the information and create the config file
+    # Verify the config file is loaded and all values are present 
+    config.read(configFile)
+    print("Config file loaded") if debugLevel <= 5 else None
+
+    # Verify all required values are present
+    required_items = {section: list(config[section]) for section in config.sections()}
     
-    
+    # Check that all required items are present
+    for section, items in required_items.items():
+        if section not in config:
+            missingItems += f"Missing section: {section}\n"
+            print(f"Missing section: {section}") if debugLevel <= 2 else None
+        else:
+            for item in items:
+                print(item) if debugLevel <= 5 else None
+                if item not in config[section]:
+                    missingItems += f"Missing section: {section}\n"
+                    print(f"Missing item: {item} in section: {section}") if debugLevel <= 2 else None
+                elif item == "":
+                    missingItems += f"Empty item: {item} in section: {section}\n"
+                    print(f"Empty item: {item} in section: {section}") if debugLevel <= 2 else None
+                    
+    print(missingItems) if debugLevel <= 2 else None
     
 #     # Run the app requirements setup
 #     print("Setting up requirements")
