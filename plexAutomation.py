@@ -17,7 +17,7 @@ Site                : https://github.com/tylerwasick/Plex-Automation
 # import requests
 # import shutil
 # import sys
-# import os
+import os
 # from pid import PidFile
 
 ## Third-party library imports
@@ -62,7 +62,7 @@ debugLevel                      = 5
 # handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
 # handBrakeProfile                = " --preset-import-gui settings/Plex-HD.json --crop-mode none"
 # regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
-# configFile                      = projectPath + "/settings/config.ini"
+configFile                      = "settings/config.ini"
 # configFileGitURL                = "https://raw.githubusercontent.com/tylerwasick/Plex-Automation/main/config.ini"
 
 ## Functions
