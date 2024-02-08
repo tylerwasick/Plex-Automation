@@ -68,6 +68,9 @@ missingItems                    = ""
 
 ## Functions
 def main():
+    # This tells Python that we want to use the global variable, not a new local variable
+    global missingItems
+    
     # Check if the config file exists
     if os.path.isfile(configFile):
         print("Config file exists") if debugLevel <= 5 else None
@@ -85,22 +88,14 @@ def main():
     print("Config file loaded") if debugLevel <= 5 else None
 
     # Verify all required values are present
-    required_items = {section: list(config[section]) for section in config.sections()}
+    required_items = {
+        "plex-media" : ["plexMount", "plexMovies", "plexShows", "plexOther"],
+        "source-media" : ["movieSource", "tvSource", "otherSource"],
+        "encoding-settings" : ["handbrakeProfile"]
+    }
     
     # Check that all required items are present
-    for section, items in required_items.items():
-        if section not in config:
-            missingItems += f"Missing section: {section}\n"
-            print(f"Missing section: {section}") if debugLevel <= 2 else None
-        else:
-            for item in items:
-                print(item) if debugLevel <= 5 else None
-                if item not in config[section]:
-                    missingItems += f"Missing section: {section}\n"
-                    print(f"Missing item: {item} in section: {section}") if debugLevel <= 2 else None
-                elif item == "":
-                    missingItems += f"Empty item: {item} in section: {section}\n"
-                    print(f"Empty item: {item} in section: {section}") if debugLevel <= 2 else None
+    
                     
     print(missingItems) if debugLevel <= 2 else None
     
