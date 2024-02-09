@@ -16,7 +16,7 @@ Site                : https://github.com/tylerwasick/Plex-Automation
 import configparser
 # import requests
 # import shutil
-# import sys
+import sys
 import os
 # from pid import PidFile
 
@@ -89,15 +89,30 @@ def main():
 
     # Verify all required values are present
     required_items = {
-        "plex-media" : ["plexMount", "plexMovies", "plexShows", "plexOther"],
+        "plex-media" : ["plexMount", "plexMovies", "plexTV", "plexOther"],
         "source-media" : ["movieSource", "tvSource", "otherSource"],
         "encoding-settings" : ["handbrakeProfile"]
     }
     
     # Check that all required items are present
-    
-                    
-    print(missingItems) if debugLevel <= 2 else None
+    # Loop over all of the required fields
+    for item in required_items:
+        # Loop over each section
+        for subitem in required_items[item]:
+            # Check if the item is present
+            print(f"Checking for {subitem}") if debugLevel <= 5 else None
+
+            # Get the value for the section and item
+            returnedItem = (config.get(item, subitem)).replace('"','')
+            print(returnedItem) if debugLevel <= 5 else None
+            
+            # If the item is empty, add to the missing items list
+            if returnedItem == "":
+                # Add missing item to the list
+
+    # Print missing items
+    print("The following items are missing from the config file:")           
+    print(missingItems) if debugLevel <= 1 else None
     
 #     # Run the app requirements setup
 #     print("Setting up requirements")
