@@ -70,7 +70,38 @@ missingItems                    = []
 def main():
     # This tells Python that we want to use the global variable, not a new local variable
     global missingItems
+
+   # Load the config file and parse the values 
+    configLoader()
+
     
+#     # Run the app requirements setup
+#     print("Setting up requirements")
+#     setup = appSetup.appRequirements(s3Bucket, s3ConfigFile, handBrakeCLIDir)
+
+#     if setup:
+#         print("App requirement setup complete")
+
+#     else:
+#         print("App requirement setup failed")
+#         sys.exit()
+
+#     # Download Handbrake
+#     download = appSetup.downloadHandbrake(handBrakeCLIDir, handBrakeFlatPakPath, handBrakeFlatPakGit)
+
+#     # Verify Handbrake downloads successfully 
+#     if download:
+#         # If successful, encode media
+#         print("Encoding media")
+#         # encodeMedia.encodeMedia(s3Media, movies, shows, others, plexHost, handBrakeProfile, regularExpPattern, encodingExt, encodingRString, encodedExt)
+#     else:
+#         # Else exit
+#         print("Failed to download Handbrake. Aborting!")
+#         sys.exit()
+
+def configLoader():
+    global missingItems
+
     # Check if the config file exists
     if os.path.isfile(configFile):
         print("Config file exists") if debugLevel >= 5 else None
@@ -124,32 +155,6 @@ def main():
         # Exit the script
         print("Exiting!")
         sys.exit(2)
-
-    
-#     # Run the app requirements setup
-#     print("Setting up requirements")
-#     setup = appSetup.appRequirements(s3Bucket, s3ConfigFile, handBrakeCLIDir)
-
-#     if setup:
-#         print("App requirement setup complete")
-
-#     else:
-#         print("App requirement setup failed")
-#         sys.exit()
-
-#     # Download Handbrake
-#     download = appSetup.downloadHandbrake(handBrakeCLIDir, handBrakeFlatPakPath, handBrakeFlatPakGit)
-
-#     # Verify Handbrake downloads successfully 
-#     if download:
-#         # If successful, encode media
-#         print("Encoding media")
-#         # encodeMedia.encodeMedia(s3Media, movies, shows, others, plexHost, handBrakeProfile, regularExpPattern, encodingExt, encodingRString, encodedExt)
-#     else:
-#         # Else exit
-#         print("Failed to download Handbrake. Aborting!")
-#         sys.exit()
-
 
 ## Main entry point
 if __name__ == "__main__":
