@@ -64,7 +64,7 @@ debugLevel                      = 5
 # regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = "settings/config.ini"
 # configFileGitURL                = "https://raw.githubusercontent.com/tylerwasick/Plex-Automation/main/config.ini"
-missingItems                    = ""
+missingItems                    = []
 
 ## Functions
 def main():
@@ -73,7 +73,7 @@ def main():
     
     # Check if the config file exists
     if os.path.isfile(configFile):
-        print("Config file exists") if debugLevel <= 5 else None
+        print("Config file exists") if debugLevel >= 5 else None
         
     else:
         # If file does not exist, create the file with a template from Github
@@ -85,7 +85,7 @@ def main():
 
     # Verify the config file is loaded and all values are present 
     config.read(configFile)
-    print("Config file loaded") if debugLevel <= 5 else None
+    print("Config file loaded") if debugLevel >= 5 else None
 
     # Verify all required values are present
     required_items = {
@@ -98,21 +98,33 @@ def main():
     # Loop over all of the required fields
     for item in required_items:
         # Loop over each section
-        for subitem in required_items[item]:
+        for section in required_items[item]:
             # Check if the item is present
-            print(f"Checking for {subitem}") if debugLevel <= 5 else None
+            print(f"Checking for {section}") if debugLevel >= 5 else None
 
             # Get the value for the section and item
-            returnedItem = (config.get(item, subitem)).replace('"','')
-            print(returnedItem) if debugLevel <= 5 else None
+            returnedItem = (config.get(item, section)).replace('"','')
+            print(returnedItem) if debugLevel >= 5 else None
             
             # If the item is empty, add to the missing items list
             if returnedItem == "":
                 # Add missing item to the list
+                missingItems.append(section)
 
-    # Print missing items
-    print("The following items are missing from the config file:")           
-    print(missingItems) if debugLevel <= 1 else None
+    if len(missingItems) == 0:
+        print("All required items are present") if debugLevel >= 5 else None
+    
+    else:
+        # Print missing items
+        print("The following items are missing from the config file:")         
+        
+        for item in missingItems:
+            print(item)
+
+        # Exit the script
+        print("Exiting!")
+        sys.exit(2)
+
     
 #     # Run the app requirements setup
 #     print("Setting up requirements")
