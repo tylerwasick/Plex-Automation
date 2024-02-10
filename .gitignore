@@ -48,4 +48,4 @@ HandBrakeCLI*
 __pycache__/
 
 ## Settings files
-settings/config.ini
+settings/*.ini
