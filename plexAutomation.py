@@ -14,7 +14,7 @@ Site                : https://github.com/tylerwasick/Plex-Automation
 
 ## Standard library imports
 import configparser
-# import requests
+import requests
 # import shutil
 import sys
 import os
@@ -24,12 +24,12 @@ import os
 
 
 ## Custom library imports
-# import scripts.appSetup as appSetup
+import scripts.appSetup as appSetup
 # import scripts.encodeMedia as encodeMedia
 
-## Variables ##
+## Variables
 debugLevel                      = 5
-# projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # userProfile                     = os.environ["HOME"]
 # plexMedia                       = {"plexMount": "/Volumes/plex"}
 # plexHost                        = "vpn.tylerwasick.com"
@@ -56,58 +56,42 @@ debugLevel                      = 5
 # encodingExt                     = (".mkv", ".mp4", ".m4v")
 # encodingRString                 = ".mp4.mkv.m4v"
 # encodedExt                      = ".m4v"
-# handBrakeCLIDir                 = projectPath + "/downloads/"
-# handBrakeFlatPakPath            = handBrakeCLIDir + "HandBrakeCLI-1.6.1-x86_64.flatpak"
-# handBrakeFlatPakGit             = "https://github.com/HandBrake/HandBrake/releases/download/1.6.1/HandBrake-1.6.1-x86_64.flatpak"
-# handbrakeSHA256                 = "b96fe8b363be2398f62efc1061f08992f93f748540f30262557889008b806009"
-# handBrakeProfile                = " --preset-import-gui settings/Plex-HD.json --crop-mode none"
+handBrakeCLIDir                 = projectPath + "/downloads/"
 # regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = "settings/config.ini"
-# configFileGitURL                = "https://raw.githubusercontent.com/tylerwasick/Plex-Automation/main/config.ini"
 missingItems                    = []
 
 ## Functions
 def main():
-    # This tells Python that we want to use the global variable, not a new local variable
-    global missingItems
-
    # Load the config file and parse the values 
     configLoader()
-
     
-#     # Run the app requirements setup
-#     print("Setting up requirements")
-#     setup = appSetup.appRequirements(s3Bucket, s3ConfigFile, handBrakeCLIDir)
+    # Setup the requirements
+    print("Setting up requirements") if debugLevel >= 3 else None
 
-#     if setup:
-#         print("App requirement setup complete")
+    handbrakeInstalled = appSetup.handbrakeInstalled()
+    # Verify Handbrake downloads successfully 
+    if handbrakeInstalled:
+        # If successful, encode media
+        print("App requirements setup complete") if debugLevel >= 3 else None
+        print("Encoding media")
+        # encodeMedia.encodeMedia(s3Media, movies, shows, others, plexHost, handBrakeProfile, regularExpPattern, encodingExt, encodingRString, encodedExt)
+    else:
+        # Else exit
+        print("Failed to download Handbrake. Aborting!")
+        sys.exit(20)
 
-#     else:
-#         print("App requirement setup failed")
-#         sys.exit()
-
-#     # Download Handbrake
-#     download = appSetup.downloadHandbrake(handBrakeCLIDir, handBrakeFlatPakPath, handBrakeFlatPakGit)
-
-#     # Verify Handbrake downloads successfully 
-#     if download:
-#         # If successful, encode media
-#         print("Encoding media")
-#         # encodeMedia.encodeMedia(s3Media, movies, shows, others, plexHost, handBrakeProfile, regularExpPattern, encodingExt, encodingRString, encodedExt)
-#     else:
-#         # Else exit
-#         print("Failed to download Handbrake. Aborting!")
-#         sys.exit()
-
+# Load the config file and parse the values
 def configLoader():
+    # This tells Python that we want to use the global variable, not a new local variable
     global missingItems
 
     # Check if the config file exists
     if os.path.isfile(configFile):
-        print("Config file exists") if debugLevel >= 5 else None
-        
+        print("Config file exists") if debugLevel >= 3 else None
+    
+    # If file does not exist, exit the script
     else:
-        # If file does not exist, create the file with a template from Github
         print("Config file does not exist, please create and update the config.ini file. Exiting!")
         sys.exit(1)
     
@@ -116,7 +100,7 @@ def configLoader():
 
     # Verify the config file is loaded and all values are present 
     config.read(configFile)
-    print("Config file loaded") if debugLevel >= 5 else None
+    print("Config file loaded") if debugLevel >= 3 else None
 
     # Verify all required values are present
     required_items = {
@@ -131,11 +115,11 @@ def configLoader():
         # Loop over each section
         for section in required_items[item]:
             # Check if the item is present
-            print(f"Checking for {section}") if debugLevel >= 5 else None
+            print(f"Checking for {section}") if debugLevel >= 4 else None
 
             # Get the value for the section and item
             returnedItem = (config.get(item, section)).replace('"','')
-            print(returnedItem) if debugLevel >= 5 else None
+            print(returnedItem) if debugLevel >= 4 else None
             
             # If the item is empty, add to the missing items list
             if returnedItem == "":
@@ -143,11 +127,11 @@ def configLoader():
                 missingItems.append(section)
 
     if len(missingItems) == 0:
-        print("All required items are present") if debugLevel >= 5 else None
+        print("All required items are present") if debugLevel >= 3 else None
     
     else:
         # Print missing items
-        print("The following items are missing from the config file:")         
+        print("The following items are missing from the config file:")
         
         for item in missingItems:
             print(item)
@@ -155,10 +139,10 @@ def configLoader():
         # Exit the script
         print("Exiting!")
         sys.exit(2)
-
+    
 ## Main entry point
 if __name__ == "__main__":
     
-    print("Starting Plex Automation") 
+    print("Starting Plex Automation")
     main()
     

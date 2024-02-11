@@ -1,5 +1,9 @@
 # Use an official Python runtime as a parent image
-FROM python:3.12.1-alpine3.19
+FROM python:3.12.2-slim-bullseye
+
+# Install the required packages
+RUN apt-get update && \
+    apt-get install -y handbrake-cli
 
 # Set the working directory in the container to /app
 WORKDIR /app

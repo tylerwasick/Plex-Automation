@@ -28,29 +28,6 @@ config                          = ConfigParser()
 ## Functions
 def appRequirements(s3Bucket, s3ConfigFile, handBrakeCLIDir) -> bool:
     ## Check if required applications are installed
-    # Flatpak 
-    def flatPakSetup() -> bool:
-        # Check to see if S3 is installed
-        call = subprocess.call(['which', 'flatpak'])
-        if call != 0:
-            # If not, install using apt
-            print("Flatpak is not installed, installing.")
-            subprocess.call(['sudo', 'apt-get', 'install', 'flatpak', '--assume-yes', '-q', '-y'])
-
-            # Verify the install was successful
-            call = subprocess.call(['which', 'flatpak'])
-            if call == 0:
-                # If so, exit
-                print("Flatpak is now installed")
-                return True
-            else:
-                # Unable to install, exit
-                print("Failed to install Flatpak, Aborting!")
-                return False
-        else:
-            # If so, exit
-            print("Flatpak is already installed")
-            return True
 
     # S3 bucket
     def s3Setup() -> bool:
@@ -145,13 +122,10 @@ def appRequirements(s3Bucket, s3ConfigFile, handBrakeCLIDir) -> bool:
             
     print("Checking for required applications...")
 
-    print("Checking if flatpak is installed")
-    setupFlatPak = flatPakSetup()
-
     print("Checking if s3cmd is installed")
     setupS3cmd = s3Setup()
 
-    if setupFlatPak and setupS3cmd:
+    if setupS3cmd:
         return True     # Exit successfully
     else:
         # Unable to install, exit
@@ -159,30 +133,13 @@ def appRequirements(s3Bucket, s3ConfigFile, handBrakeCLIDir) -> bool:
         return False    # Exit with errors
 
 # Download HandBrakeCLIDir is n ot already downloaded
-def downloadHandbrake(handBrakeCLIDir, handBrakeFlatPakPath, handBrakeFlatPakGit) -> bool:
+def handbrakeInstalled() -> bool:
+    
     # Check if "HandBrakeCLI" is already installed, is so exit and return True
-    process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
-    if process == 0:
+    try:
+        subprocess.check_output(['dpkg', '-s', 'handbrake-cli'])
         return True  # Exit successfully
-    
-    # Check if the HandBrakeCLI directory exists, if not create it
-    if not os.path.exists(handBrakeCLIDir):
-        os.makedirs(handBrakeCLIDir)
-
-    # Check if the HandBrakeCLI file exists, if not download it
-    if not os.path.isfile(handBrakeFlatPakPath):
-        print("Downloading HandBrakeCLI")
-        r = requests.get(handBrakeFlatPakGit, allow_redirects=True)
-        open(handBrakeFlatPakPath, 'wb').write(r.content)
-
-    # Install Handbrake using Flatpak
-    subprocess.call(['flatpak', '--user', 'install', handBrakeFlatPakPath, '-y'])
-    
-    # Verify the install was successful
-    process = subprocess.call('flatpak list | grep "HandBrakeCLI"', shell=True)
-    if process == 0:
-        return True  # Exit successfully
-    else:
+    except subprocess.CalledProcessError:
         return False # Exit with errors
 
 ## Main entry point

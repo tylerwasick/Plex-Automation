@@ -46,6 +46,3 @@ HandBrakeCLI*
 # Python
 *.pid
 __pycache__/
-
-## Settings files
-settings/*.ini

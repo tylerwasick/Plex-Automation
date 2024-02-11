@@ -9,6 +9,26 @@ This guide provides information on different exit codes and error messages that 
 | 0         | Success                            |
 | 1         | No config file found               |
 | 2         | Config file is missing information |
+| 3         |                                    |
+| 4         |                                    |
+| 5         |                                    |
+| 6         |                                    |
+| 7         |                                    |
+| 8         |                                    |
+| 9         |                                    |
+| 10        |                                    |
+| 11        |                                    |
+| 12        |                                    |
+| 13        |                                    |
+| 14        |                                    |
+| 15        |                                    |
+| 16        |                                    |
+| 17        |                                    |
+| 18        |                                    |
+| 19        |                                    |
+| 20        | Unable to download Handbrake       |
+| 21        |                                    |
+| 22        |                                    |
 
 ## Error Messages
 
