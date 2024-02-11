@@ -32,24 +32,6 @@ debugLevel                      = 5
 projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # userProfile                     = os.environ["HOME"]
 # plexMedia                       = {"plexMount": "/Volumes/plex"}
-# plexHost                        = "vpn.tylerwasick.com"
-# s3Bucket                        = "s3://plexutil/"
-# s3ConfigFile                    = "~/.s3cfg"
-# s3Media                         = {
-#     "movieSource"                   : s3Bucket + "Movies/",
-#     "tvSource"                      : s3Bucket + "TV/",
-#     "otherSource"                   : s3Bucket + "Other/",
-#     "moviePlexDestination"          : "/plex/Movies/",
-#     "tvPlexDestination"             : "/plex/TV/",
-#     "otherPlexDestination"          : "",
-#     "movieEncodeDestination"        : "/plextemp/Encoded/Movies/",
-#     "tvEncodeDestination"           : "/plextemp/Encoded/TV/",
-#     "otherEncodeDestination"        : "/plextemp/Encoded/Other/",
-#     "archiveDestination"            : s3Bucket + "Archived/",
-#     "movieTmpDestination"           : "/plextemp/Temp/Movies/",
-#     "tvTmpDestination"              : "/plextemp/Temp/TV/",
-#     "otherTmpDestination"           : "/plextemp/Temp/Other/"
-# }
 # movies                          = []
 # shows                           = []
 # others                          = []
@@ -69,7 +51,7 @@ def main():
     # Setup the requirements
     print("Setting up requirements") if debugLevel >= 3 else None
 
-    handbrakeInstalled = appSetup.handbrakeInstalled()
+    handbrakeInstalled = appSetup.appRequirements.handbrakeInstalled()
     # Verify Handbrake downloads successfully 
     if handbrakeInstalled:
         # If successful, encode media
