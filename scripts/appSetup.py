@@ -22,7 +22,7 @@ from configparser import ConfigParser
 config                          = ConfigParser()
 
 ## Functions
-def appRequirements():
+def appRequirements() -> bool:
     ## Check if required applications are installed
     print("Checking for required applications...")
 

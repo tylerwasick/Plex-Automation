@@ -14,11 +14,8 @@ Site                : https://github.com/tylerwasick/Plex-Automation
 
 ## Standard library imports
 import configparser
-import requests
-# import shutil
 import sys
 import os
-# from pid import PidFile
 
 ## Third-party library imports
 
@@ -30,8 +27,6 @@ import scripts.appSetup as appSetup
 ## Variables
 debugLevel                      = 5
 projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# userProfile                     = os.environ["HOME"]
-# plexMedia                       = {"plexMount": "/Volumes/plex"}
 # movies                          = []
 # shows                           = []
 # others                          = []
@@ -52,6 +47,7 @@ def main():
     print("Setting up requirements") if debugLevel >= 3 else None
 
     handbrakeInstalled = appSetup.appRequirements.handbrakeInstalled()
+    
     # Verify Handbrake downloads successfully 
     if handbrakeInstalled:
         # If successful, encode media
