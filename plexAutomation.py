@@ -1,17 +1,5 @@
 # /usr/bin/python3
 
-"""
-Script Name         : plexAutomation.py
-Version             : 0.1.0
-Description         : Python scripts to help automate the process of
-                      encoding media files and transferring to your Plex Media Server.
-Author              : Tyler Wasick (github.com/tylerwasick)
-Date                : 09/01/2023
-License             : GNU General Public License v3.0
-Site                : https://github.com/tylerwasick/Plex-Automation
-=======================================================================================
-"""
-
 ## Standard library imports
 import configparser
 import sys
@@ -22,19 +10,12 @@ import os
 
 ## Custom library imports
 import scripts.appSetup as appSetup
-# import scripts.encodeMedia as encodeMedia
+import scripts.encodeMedia as encodeMedia
 
 ## Variables
 debugLevel                      = 5
 projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# movies                          = []
-# shows                           = []
-# others                          = []
-# encodingExt                     = (".mkv", ".mp4", ".m4v")
-# encodingRString                 = ".mp4.mkv.m4v"
-# encodedExt                      = ".m4v"
 handBrakeCLIDir                 = projectPath + "/downloads/"
-# regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
 configFile                      = "settings/config.ini"
 missingItems                    = []
 
@@ -52,8 +33,10 @@ def main():
     if handbrakeInstalled:
         # If successful, encode media
         print("App requirements setup complete") if debugLevel >= 3 else None
+
+        # Start encoding media
         print("Encoding media")
-        # encodeMedia.encodeMedia(s3Media, movies, shows, others, plexHost, handBrakeProfile, regularExpPattern, encodingExt, encodingRString, encodedExt)
+        encodeMedia.encodeMedia()
     else:
         # Else exit
         print("Failed to download Handbrake. Aborting!")
@@ -117,7 +100,7 @@ def configLoader():
         # Exit the script
         print("Exiting!")
         sys.exit(2)
-    
+
 ## Main entry point
 if __name__ == "__main__":
     

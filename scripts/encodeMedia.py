@@ -1,15 +1,5 @@
 # /usr/bin/python3
 
-"""
-Script Name         : encodeMedia.py
-Description         : Python script handling the encoding of media files.
-Author              : Tyler Wasick (github.com/tylerwasick)
-Date                : 09/01/2023
-=======================================================================================
-Version History     :
-09/01/2023          : Initial Release
-"""
-
 ## Standard library imports
 import re
 import subprocess
@@ -19,9 +9,19 @@ import os
 ## Third-party library imports
 import paramiko
 
+## Variables
+movies                          = []
+shows                           = []
+others                          = []
+encodingExt                     = (".mkv", ".mp4", ".m4v")
+encodingRString                 = ".mp4.mkv.m4v"
+encodedExt                      = ".m4v"
+regularExpPattern               = r"^([\w\s]+)\s-\sS(\d+)E"
+
+
 ## Functions
 # Encode media
-def encodeMedia(s3Media, movies, shows, others, plexHost, handBrakeProfile, regularExpPattern, encodingExt, encodingRString, encodedExt):
+def encodeMedia():
     # Loop through all media types (3 folders)
     for counter in range(3):
         # Set source and destination dir for relevant content
