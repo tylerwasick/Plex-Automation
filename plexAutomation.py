@@ -18,6 +18,7 @@ projectPath                     = BASE_DIR = os.path.dirname(os.path.abspath(__f
 handBrakeCLIDir                 = projectPath + "/downloads/"
 configFile                      = "settings/config.ini"
 missingItems                    = []
+config                          = configparser.ConfigParser()
 
 ## Functions
 def main():
@@ -27,7 +28,8 @@ def main():
     # Setup the requirements
     print("Setting up requirements") if debugLevel >= 3 else None
 
-    handbrakeInstalled = appSetup.appRequirements.handbrakeInstalled()
+    # handbrakeInstalled = appSetup.handbrakeInstalled()
+    handbrakeInstalled = True ## Placeholder for testing
     
     # Verify Handbrake downloads successfully 
     if handbrakeInstalled:
@@ -36,7 +38,7 @@ def main():
 
         # Start encoding media
         print("Encoding media")
-        encodeMedia.encodeMedia()
+        encodeMedia.encodeMedia(config)
     else:
         # Else exit
         print("Failed to download Handbrake. Aborting!")
@@ -55,9 +57,6 @@ def configLoader():
     else:
         print("Config file does not exist, please create and update the config.ini file. Exiting!")
         sys.exit(1)
-    
-    # Load the config file and parse the values
-    config = configparser.ConfigParser()
 
     # Verify the config file is loaded and all values are present 
     config.read(configFile)
@@ -66,7 +65,7 @@ def configLoader():
     # Verify all required values are present
     required_items = {
         "plex-media" : ["plexMount", "plexMovies", "plexTV", "plexOther"],
-        "source-media" : ["movieSource", "tvSource", "otherSource"],
+        "local-media" : ["movieSource", "tvSource", "otherSource", "movieTemp", "tvTemp", "otherTemp", "movieDestination", "tvDestination", "otherDestination", "archive"],
         "encoding-settings" : ["handbrakeProfile"]
     }
     
